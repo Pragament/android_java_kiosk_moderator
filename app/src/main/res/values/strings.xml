@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Teacher App</string>
+    <string name="class_code_display">%1$s%2$s</string>
+
+</resources>
