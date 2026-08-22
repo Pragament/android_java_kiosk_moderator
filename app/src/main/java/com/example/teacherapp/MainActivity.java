@@ -33,7 +33,7 @@ import com.google.firebase.auth.FirebaseAuth;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -118,10 +118,7 @@ public class MainActivity extends AppCompatActivity {
         TextInputEditText etClassCode = dialogLayout.findViewById(R.id.et_class_code);
         TextInputLayout tilClassCode = dialogLayout.findViewById(R.id.til_class_code);
 
-        String uuid = UUID.randomUUID().toString().replace("-", "")
-                .substring(0, 8);
-        String classCode = getString(R.string.class_code_display, prefManager.getUserId()
-                .substring(0, 8), uuid);
+        String classCode = generateClassCode();
         etClassCode.setText(classCode);
 
         tilClassCode.setEndIconOnClickListener(new View.OnClickListener() {
@@ -145,6 +142,23 @@ public class MainActivity extends AppCompatActivity {
                         Toast.makeText(this, "Enter classroom name", Toast.LENGTH_SHORT).show();
                     }
                 });
+    }
+
+    private String generateClassCode() {
+        String code;
+        do {
+            code = String.valueOf(ThreadLocalRandom.current().nextInt(100000, 1000000));
+        } while (isClassCodeAlreadyLoaded(code));
+        return code;
+    }
+
+    private boolean isClassCodeAlreadyLoaded(String code) {
+        for (Classroom classroom : classroomList) {
+            if (code.equals(classroom.getClassCode())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void createClassroom(String className, String classCode, AlertDialog dialog) {

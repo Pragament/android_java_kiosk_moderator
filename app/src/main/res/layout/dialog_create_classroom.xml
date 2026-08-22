@@ -34,7 +34,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:enabled="false"
-            android:text="gasfe53grfsdfdfa" />
+            android:text="123456" />
 
     </com.google.android.material.textfield.TextInputLayout>
 
