@@ -17,6 +17,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import com.example.teacherapp.R;
 import com.example.teacherapp.data.FirestoreRepo;
 import com.example.teacherapp.databinding.ActivityClassDetailBinding;
+import com.example.teacherapp.model.BlacklistedApp;
 import com.example.teacherapp.model.Classroom;
 import com.example.teacherapp.model.UsageLog;
 import com.example.teacherapp.ui.UsageLogAdapter;
@@ -37,6 +38,7 @@ public class ClassDetailActivity extends AppCompatActivity {
     private List<UsageLog> usageLogList;
     private UsageLogAdapter adapter;
     private Classroom classroom;
+    private String classCode;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,7 +54,7 @@ public class ClassDetailActivity extends AppCompatActivity {
         Intent intent = getIntent();
         MaterialToolbar toolbar = findViewById(R.id.toolbar_class_detail);
 
-        String classCode = intent.getStringExtra("class_code");
+        classCode = intent.getStringExtra("class_code");
         toolbar.setTitle(intent.getStringExtra("class_name"));
 
         loadUsageLog(classCode);
@@ -61,6 +63,8 @@ public class ClassDetailActivity extends AppCompatActivity {
             int id = menuItem.getItemId();
             if (id == R.id.btn_menu_detail_refresh) {
                 loadUsageLog(classCode);
+            } else if (id == R.id.btn_menu_detail_blacklist) {
+                showBlacklistedAppsDialog();
             } else if (id == R.id.btn_menu_detail_about) {
                 showClassDetailsDialog(classroom);
             }
@@ -156,7 +160,73 @@ public class ClassDetailActivity extends AppCompatActivity {
         tvPackageName.setText("Package: " + usageLog.getPackageName());
         tvTimestamp.setText("Timestamp: " + formattedDate(usageLog.getTimestamp()));
 
-        new MaterialAlertDialogBuilder(this).setView(dialogView).show();
+        new MaterialAlertDialogBuilder(this)
+                .setView(dialogView)
+                .setPositiveButton("Blacklist App", (dialog, which) -> addAppToBlacklist(usageLog))
+                .setNegativeButton("Close", null)
+                .show();
+    }
+
+    private void addAppToBlacklist(UsageLog usageLog) {
+        String packageName = usageLog.getPackageName();
+        if (packageName == null || packageName.trim().isEmpty()) {
+            Toast.makeText(this, "No package name found for this app", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String usageAppName = usageLog.getAppName();
+        final String appName = usageAppName == null || usageAppName.trim().isEmpty()
+                ? packageName
+                : usageAppName;
+
+        BlacklistedApp app = new BlacklistedApp(appName, packageName, System.currentTimeMillis());
+        firestoreRepo.addBlacklistedApp(classCode, app,
+                unused -> Toast.makeText(this, appName + " blacklisted", Toast.LENGTH_SHORT).show(),
+                e -> Toast.makeText(this, "Could not blacklist app", Toast.LENGTH_SHORT).show());
+    }
+
+    private void showBlacklistedAppsDialog() {
+        firestoreRepo.fetchBlacklistedApps(classCode, querySnapshot -> {
+            List<BlacklistedApp> apps = querySnapshot.toObjects(BlacklistedApp.class);
+            if (apps.isEmpty()) {
+                new MaterialAlertDialogBuilder(this)
+                        .setTitle("Blacklisted Apps")
+                        .setMessage("No apps are blacklisted for this class.")
+                        .setPositiveButton(android.R.string.ok, null)
+                        .show();
+                return;
+            }
+
+            String[] appLabels = new String[apps.size()];
+            for (int i = 0; i < apps.size(); i++) {
+                BlacklistedApp app = apps.get(i);
+                appLabels[i] = app.getAppName() + "\n" + app.getPackageName();
+            }
+
+            final int[] selectedIndex = {-1};
+            androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                    .setTitle("Blacklisted Apps")
+                    .setSingleChoiceItems(appLabels, -1, (choiceDialog, which) -> selectedIndex[0] = which)
+                    .setPositiveButton("Remove", null)
+                    .setNegativeButton("Close", null)
+                    .show();
+
+            dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE)
+                    .setOnClickListener(view -> {
+                        if (selectedIndex[0] == -1) {
+                            Toast.makeText(this, "Select an app to remove", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        removeAppFromBlacklist(apps.get(selectedIndex[0]));
+                        dialog.dismiss();
+                    });
+        }, e -> Toast.makeText(this, "Could not load blacklisted apps", Toast.LENGTH_SHORT).show());
+    }
+
+    private void removeAppFromBlacklist(BlacklistedApp app) {
+        firestoreRepo.removeBlacklistedApp(classCode, app.getPackageName(),
+                unused -> Toast.makeText(this, app.getAppName() + " removed", Toast.LENGTH_SHORT).show(),
+                e -> Toast.makeText(this, "Could not remove app", Toast.LENGTH_SHORT).show());
     }
 
 

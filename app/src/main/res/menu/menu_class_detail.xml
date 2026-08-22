@@ -5,6 +5,9 @@
         android:id="@+id/btn_menu_detail_refresh"
         android:title="Refresh"/>
     <item
+        android:id="@+id/btn_menu_detail_blacklist"
+        android:title="Blacklisted Apps"/>
+    <item
         android:id="@+id/btn_menu_detail_about"
         android:title="About Classroom"/>
 </menu>
