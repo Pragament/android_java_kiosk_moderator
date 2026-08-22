@@ -9,6 +9,9 @@ import android.widget.ImageButton;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.example.teacherapp.R;
@@ -40,6 +43,7 @@ public class ClassDetailActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         binding = ActivityClassDetailBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+        applyStatusBarInsets();
 
         firestoreRepo = new FirestoreRepo();
         usageLogList = new ArrayList<>();
@@ -67,6 +71,24 @@ public class ClassDetailActivity extends AppCompatActivity {
         firestoreRepo.fetchSpecificClass(classCode, querySnapshot -> {
             classroom = querySnapshot.toObjects(Classroom.class).get(0);
         }, e -> classroom = null);
+    }
+
+    private void applyStatusBarInsets() {
+        View appBar = findViewById(R.id.app_bar_class_detail);
+        int initialLeft = appBar.getPaddingLeft();
+        int initialTop = appBar.getPaddingTop();
+        int initialRight = appBar.getPaddingRight();
+        int initialBottom = appBar.getPaddingBottom();
+
+        ViewCompat.setOnApplyWindowInsetsListener(appBar, (view, insets) -> {
+            Insets statusBars = insets.getInsets(WindowInsetsCompat.Type.statusBars());
+            view.setPadding(
+                    initialLeft,
+                    initialTop + statusBars.top,
+                    initialRight,
+                    initialBottom);
+            return insets;
+        });
     }
 
     private void showClassDetailsDialog(Classroom classroom) {

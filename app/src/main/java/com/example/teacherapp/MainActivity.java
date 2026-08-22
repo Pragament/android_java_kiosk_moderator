@@ -16,6 +16,9 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
@@ -24,7 +27,6 @@ import com.example.teacherapp.data.FirestoreRepo;
 import com.example.teacherapp.databinding.ActivityMainBinding;
 import com.example.teacherapp.model.Classroom;
 import com.example.teacherapp.ui.ClassAdapter;
-import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
@@ -48,6 +50,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         binding = ActivityMainBinding.inflate(getLayoutInflater());
         setContentView(binding.getRoot());
+        applyStatusBarInsets();
 
         firetoreRepo = new FirestoreRepo();
         prefManager = new PrefManager(this);
@@ -63,6 +66,24 @@ public class MainActivity extends AppCompatActivity {
                     .getCurrentUser().getDisplayName(), Toast.LENGTH_SHORT).show();
         });
 
+    }
+
+    private void applyStatusBarInsets() {
+        View appBar = findViewById(R.id.app_bar_main);
+        int initialLeft = appBar.getPaddingLeft();
+        int initialTop = appBar.getPaddingTop();
+        int initialRight = appBar.getPaddingRight();
+        int initialBottom = appBar.getPaddingBottom();
+
+        ViewCompat.setOnApplyWindowInsetsListener(appBar, (view, insets) -> {
+            Insets statusBars = insets.getInsets(WindowInsetsCompat.Type.statusBars());
+            view.setPadding(
+                    initialLeft,
+                    initialTop + statusBars.top,
+                    initialRight,
+                    initialBottom);
+            return insets;
+        });
     }
 
     private void loadClassrooms() {
