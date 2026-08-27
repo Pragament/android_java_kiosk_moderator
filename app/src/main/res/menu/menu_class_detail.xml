@@ -5,11 +5,23 @@
         android:id="@+id/btn_menu_detail_refresh"
         android:title="Refresh"/>
     <item
-        android:id="@+id/btn_menu_detail_blacklist"
-        android:title="Blacklisted Apps"/>
-    <item
         android:id="@+id/btn_menu_detail_whitelist"
         android:title="Whitelisted Apps"/>
+    <item
+        android:id="@+id/btn_menu_detail_date_filter"
+        android:title="Date Filter"/>
+    <item
+        android:id="@+id/btn_menu_detail_filter"
+        android:title="App/Student Filter"/>
+    <item
+        android:id="@+id/btn_menu_detail_group"
+        android:title="Group By"/>
+    <item
+        android:id="@+id/btn_menu_detail_view_mode"
+        android:title="View Mode"/>
+    <item
+        android:id="@+id/btn_menu_detail_sort"
+        android:title="Sort"/>
     <item
         android:id="@+id/btn_menu_detail_about"
         android:title="About Classroom"/>
