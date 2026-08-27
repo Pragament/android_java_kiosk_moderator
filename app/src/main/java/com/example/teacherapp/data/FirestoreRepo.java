@@ -5,6 +5,7 @@ import androidx.annotation.NonNull;
 import com.example.teacherapp.model.BlacklistedApp;
 import com.example.teacherapp.model.Classroom;
 import com.example.teacherapp.model.UsageLog;
+import com.example.teacherapp.model.WhitelistedApp;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.firestore.CollectionReference;
@@ -18,6 +19,7 @@ public class FirestoreRepo {
     private FirebaseFirestore firestore;
     private final String CLASSROOM_COLLECTION = "classrooms";
     private final String BLACKLIST_COLLECTION = "blacklistedApps";
+    private final String WHITELIST_COLLECTION = "whitelistedApps";
 
     public FirestoreRepo() {
         firestore = FirebaseFirestore.getInstance();
@@ -90,6 +92,44 @@ public class FirestoreRepo {
         firestore.collection(CLASSROOM_COLLECTION)
                 .document(classCode)
                 .collection(BLACKLIST_COLLECTION)
+                .document(packageName)
+                .delete()
+                .addOnSuccessListener(onSuccess)
+                .addOnFailureListener(onFailure);
+    }
+
+    public void addWhitelistedApp(String classCode,
+                                  WhitelistedApp app,
+                                  OnSuccessListener<Void> onSuccess,
+                                  OnFailureListener onFailure) {
+        firestore.collection(CLASSROOM_COLLECTION)
+                .document(classCode)
+                .collection(WHITELIST_COLLECTION)
+                .document(app.getPackageName())
+                .set(app)
+                .addOnSuccessListener(onSuccess)
+                .addOnFailureListener(onFailure);
+    }
+
+    public void fetchWhitelistedApps(String classCode,
+                                     OnSuccessListener<QuerySnapshot> onSuccess,
+                                     OnFailureListener onFailure) {
+        firestore.collection(CLASSROOM_COLLECTION)
+                .document(classCode)
+                .collection(WHITELIST_COLLECTION)
+                .orderBy("appName", Query.Direction.ASCENDING)
+                .get()
+                .addOnSuccessListener(onSuccess)
+                .addOnFailureListener(onFailure);
+    }
+
+    public void removeWhitelistedApp(String classCode,
+                                     String packageName,
+                                     OnSuccessListener<Void> onSuccess,
+                                     OnFailureListener onFailure) {
+        firestore.collection(CLASSROOM_COLLECTION)
+                .document(classCode)
+                .collection(WHITELIST_COLLECTION)
                 .document(packageName)
                 .delete()
                 .addOnSuccessListener(onSuccess)

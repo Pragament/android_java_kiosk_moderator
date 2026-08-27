@@ -8,6 +8,9 @@
         android:id="@+id/btn_menu_detail_blacklist"
         android:title="Blacklisted Apps"/>
     <item
+        android:id="@+id/btn_menu_detail_whitelist"
+        android:title="Whitelisted Apps"/>
+    <item
         android:id="@+id/btn_menu_detail_about"
         android:title="About Classroom"/>
 </menu>

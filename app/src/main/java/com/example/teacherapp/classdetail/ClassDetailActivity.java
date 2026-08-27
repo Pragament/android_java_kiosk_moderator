@@ -20,6 +20,7 @@ import com.example.teacherapp.databinding.ActivityClassDetailBinding;
 import com.example.teacherapp.model.BlacklistedApp;
 import com.example.teacherapp.model.Classroom;
 import com.example.teacherapp.model.UsageLog;
+import com.example.teacherapp.model.WhitelistedApp;
 import com.example.teacherapp.ui.UsageLogAdapter;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -65,6 +66,8 @@ public class ClassDetailActivity extends AppCompatActivity {
                 loadUsageLog(classCode);
             } else if (id == R.id.btn_menu_detail_blacklist) {
                 showBlacklistedAppsDialog();
+            } else if (id == R.id.btn_menu_detail_whitelist) {
+                showWhitelistedAppsDialog();
             } else if (id == R.id.btn_menu_detail_about) {
                 showClassDetailsDialog(classroom);
             }
@@ -163,6 +166,7 @@ public class ClassDetailActivity extends AppCompatActivity {
         new MaterialAlertDialogBuilder(this)
                 .setView(dialogView)
                 .setPositiveButton("Blacklist App", (dialog, which) -> addAppToBlacklist(usageLog))
+                .setNeutralButton("Whitelist App", (dialog, which) -> addAppToWhitelist(usageLog))
                 .setNegativeButton("Close", null)
                 .show();
     }
@@ -183,6 +187,24 @@ public class ClassDetailActivity extends AppCompatActivity {
         firestoreRepo.addBlacklistedApp(classCode, app,
                 unused -> Toast.makeText(this, appName + " blacklisted", Toast.LENGTH_SHORT).show(),
                 e -> Toast.makeText(this, "Could not blacklist app", Toast.LENGTH_SHORT).show());
+    }
+
+    private void addAppToWhitelist(UsageLog usageLog) {
+        String packageName = usageLog.getPackageName();
+        if (packageName == null || packageName.trim().isEmpty()) {
+            Toast.makeText(this, "No package name found for this app", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        String usageAppName = usageLog.getAppName();
+        final String appName = usageAppName == null || usageAppName.trim().isEmpty()
+                ? packageName
+                : usageAppName;
+
+        WhitelistedApp app = new WhitelistedApp(appName, packageName, System.currentTimeMillis());
+        firestoreRepo.addWhitelistedApp(classCode, app,
+                unused -> Toast.makeText(this, appName + " whitelisted", Toast.LENGTH_SHORT).show(),
+                e -> Toast.makeText(this, "Could not whitelist app", Toast.LENGTH_SHORT).show());
     }
 
     private void showBlacklistedAppsDialog() {
@@ -225,6 +247,50 @@ public class ClassDetailActivity extends AppCompatActivity {
 
     private void removeAppFromBlacklist(BlacklistedApp app) {
         firestoreRepo.removeBlacklistedApp(classCode, app.getPackageName(),
+                unused -> Toast.makeText(this, app.getAppName() + " removed", Toast.LENGTH_SHORT).show(),
+                e -> Toast.makeText(this, "Could not remove app", Toast.LENGTH_SHORT).show());
+    }
+
+    private void showWhitelistedAppsDialog() {
+        firestoreRepo.fetchWhitelistedApps(classCode, querySnapshot -> {
+            List<WhitelistedApp> apps = querySnapshot.toObjects(WhitelistedApp.class);
+            if (apps.isEmpty()) {
+                new MaterialAlertDialogBuilder(this)
+                        .setTitle("Whitelisted Apps")
+                        .setMessage("No apps are whitelisted for this class.")
+                        .setPositiveButton(android.R.string.ok, null)
+                        .show();
+                return;
+            }
+
+            String[] appLabels = new String[apps.size()];
+            for (int i = 0; i < apps.size(); i++) {
+                WhitelistedApp app = apps.get(i);
+                appLabels[i] = app.getAppName() + "\n" + app.getPackageName();
+            }
+
+            final int[] selectedIndex = {-1};
+            androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                    .setTitle("Whitelisted Apps")
+                    .setSingleChoiceItems(appLabels, -1, (choiceDialog, which) -> selectedIndex[0] = which)
+                    .setPositiveButton("Remove", null)
+                    .setNegativeButton("Close", null)
+                    .show();
+
+            dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE)
+                    .setOnClickListener(view -> {
+                        if (selectedIndex[0] == -1) {
+                            Toast.makeText(this, "Select an app to remove", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        removeAppFromWhitelist(apps.get(selectedIndex[0]));
+                        dialog.dismiss();
+                    });
+        }, e -> Toast.makeText(this, "Could not load whitelisted apps", Toast.LENGTH_SHORT).show());
+    }
+
+    private void removeAppFromWhitelist(WhitelistedApp app) {
+        firestoreRepo.removeWhitelistedApp(classCode, app.getPackageName(),
                 unused -> Toast.makeText(this, app.getAppName() + " removed", Toast.LENGTH_SHORT).show(),
                 e -> Toast.makeText(this, "Could not remove app", Toast.LENGTH_SHORT).show());
     }
