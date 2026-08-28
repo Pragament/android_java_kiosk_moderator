@@ -3,6 +3,7 @@ package com.example.teacherapp.ui;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -12,8 +13,10 @@ import com.example.teacherapp.model.WebUsageLog;
 import com.google.android.material.textview.MaterialTextView;
 
 import java.text.SimpleDateFormat;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 public class WebUsageLogAdapter extends RecyclerView.Adapter<RecyclerView.ViewHolder> {
 
@@ -46,6 +49,7 @@ public class WebUsageLogAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
 
     public interface OnWebUsageLogClickListener {
         void onLogClick(WebUsageLog webUsageLog);
+        void onWhitelistClick(WebUsageLog webUsageLog);
     }
 
     private static final int VIEW_TYPE_GROUP = 0;
@@ -56,12 +60,15 @@ public class WebUsageLogAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
     private final OnWebUsageLogClickListener listener;
     private final SimpleDateFormat dateFormat = new SimpleDateFormat("MMM dd, yyyy", Locale.getDefault());
     private final SimpleDateFormat timeFormat = new SimpleDateFormat("hh:mm a", Locale.getDefault());
+    private Set<String> whitelistedHosts;
     private ViewMode viewMode;
 
     public WebUsageLogAdapter(List<DisplayItem> displayItems,
+                              Set<String> whitelistedHosts,
                               ViewMode viewMode,
                               OnWebUsageLogClickListener listener) {
         this.displayItems = displayItems;
+        this.whitelistedHosts = new HashSet<>(whitelistedHosts);
         this.viewMode = viewMode;
         this.listener = listener;
     }
@@ -74,6 +81,11 @@ public class WebUsageLogAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
 
     public void setViewMode(ViewMode viewMode) {
         this.viewMode = viewMode;
+        notifyDataSetChanged();
+    }
+
+    public void setWhitelistedHosts(Set<String> whitelistedHosts) {
+        this.whitelistedHosts = new HashSet<>(whitelistedHosts);
         notifyDataSetChanged();
     }
 
@@ -111,32 +123,41 @@ public class WebUsageLogAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
         }
 
         WebUsageLog webUsageLog = item.webUsageLog;
+        boolean isWhitelisted = whitelistedHosts.contains(webUsageLog.getHost());
         if (holder instanceof TableViewHolder) {
-            bindTable((TableViewHolder) holder, webUsageLog);
+            bindTable((TableViewHolder) holder, webUsageLog, isWhitelisted);
         } else if (holder instanceof CardViewHolder) {
-            bindCard((CardViewHolder) holder, webUsageLog);
+            bindCard((CardViewHolder) holder, webUsageLog, isWhitelisted);
         }
     }
 
-    private void bindCard(CardViewHolder holder, WebUsageLog webUsageLog) {
+    private void bindCard(CardViewHolder holder, WebUsageLog webUsageLog, boolean isWhitelisted) {
         holder.tvWebLog.setText(safeText(webUsageLog.getStudentLog()));
         holder.tvWebHost.setText(safeText(webUsageLog.getHost()));
         holder.tvWebStudentName.setText("By - " + safeText(webUsageLog.getStudentName()));
         holder.tvWebDate.setText(dateFormat.format(webUsageLog.getTimestamp()));
         holder.tvWebTime.setText(timeFormat.format(webUsageLog.getTimestamp()));
-        holder.itemView.setOnClickListener(v -> {
-            if (listener != null) {
-                listener.onLogClick(webUsageLog);
-            }
-        });
+        bindCommon(holder.itemView, holder.btnWhitelist, webUsageLog, isWhitelisted);
     }
 
-    private void bindTable(TableViewHolder holder, WebUsageLog webUsageLog) {
+    private void bindTable(TableViewHolder holder, WebUsageLog webUsageLog, boolean isWhitelisted) {
         holder.tvWebHost.setText(safeText(webUsageLog.getHost()));
         holder.tvWebStudent.setText(safeText(webUsageLog.getStudentName()));
         holder.tvWebDate.setText(dateFormat.format(webUsageLog.getTimestamp()));
         holder.tvWebTime.setText(timeFormat.format(webUsageLog.getTimestamp()));
-        holder.itemView.setOnClickListener(v -> {
+        bindCommon(holder.itemView, holder.btnWhitelist, webUsageLog, isWhitelisted);
+    }
+
+    private void bindCommon(View itemView, ImageButton btnWhitelist, WebUsageLog webUsageLog, boolean isWhitelisted) {
+        btnWhitelist.setSelected(isWhitelisted);
+        btnWhitelist.setImageResource(isWhitelisted ? R.drawable.ic_whitelist_filled : R.drawable.ic_whitelist_outline);
+        btnWhitelist.setContentDescription(isWhitelisted ? "Remove from website whitelist" : "Add to website whitelist");
+        btnWhitelist.setOnClickListener(v -> {
+            if (listener != null) {
+                listener.onWhitelistClick(webUsageLog);
+            }
+        });
+        itemView.setOnClickListener(v -> {
             if (listener != null) {
                 listener.onLogClick(webUsageLog);
             }
@@ -163,6 +184,7 @@ public class WebUsageLogAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
 
     public static class CardViewHolder extends RecyclerView.ViewHolder {
         MaterialTextView tvWebLog, tvWebHost, tvWebStudentName, tvWebDate, tvWebTime;
+        ImageButton btnWhitelist;
 
         public CardViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -171,11 +193,13 @@ public class WebUsageLogAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             tvWebStudentName = itemView.findViewById(R.id.tv_web_student_name);
             tvWebDate = itemView.findViewById(R.id.tv_web_date);
             tvWebTime = itemView.findViewById(R.id.tv_web_time);
+            btnWhitelist = itemView.findViewById(R.id.btn_web_whitelist);
         }
     }
 
     public static class TableViewHolder extends RecyclerView.ViewHolder {
         MaterialTextView tvWebHost, tvWebStudent, tvWebDate, tvWebTime;
+        ImageButton btnWhitelist;
 
         public TableViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -183,6 +207,7 @@ public class WebUsageLogAdapter extends RecyclerView.Adapter<RecyclerView.ViewHo
             tvWebStudent = itemView.findViewById(R.id.tv_web_table_student);
             tvWebDate = itemView.findViewById(R.id.tv_web_table_date);
             tvWebTime = itemView.findViewById(R.id.tv_web_table_time);
+            btnWhitelist = itemView.findViewById(R.id.btn_web_whitelist);
         }
     }
 }

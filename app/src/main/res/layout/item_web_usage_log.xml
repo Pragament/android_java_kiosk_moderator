@@ -12,57 +12,77 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
+        android:orientation="horizontal"
         android:padding="16dp">
 
-        <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/tv_web_log"
-            style="?attr/textAppearanceTitleMedium"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:ellipsize="end"
-            android:maxLines="1"
-            android:text="Opened Join Active Quiz"
-            android:textStyle="bold" />
-
-        <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/tv_web_host"
-            style="?attr/textAppearanceBodyMedium"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:paddingTop="4dp"
-            android:text="levelup.technikh.com" />
-
-        <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/tv_web_student_name"
-            style="?attr/textAppearanceBodyMedium"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:paddingTop="2dp"
-            android:text="By - Student" />
-
         <LinearLayout
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:paddingTop="6dp">
+            android:layout_weight="1"
+            android:orientation="vertical">
 
             <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/tv_web_date"
-                style="?attr/textAppearanceLabelMedium"
-                android:layout_width="wrap_content"
+                android:id="@+id/tv_web_log"
+                style="?attr/textAppearanceTitleMedium"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Aug 28, 2026" />
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="Opened Join Active Quiz"
+                android:textStyle="bold" />
 
             <com.google.android.material.textview.MaterialTextView
-                android:id="@+id/tv_web_time"
-                style="?attr/textAppearanceLabelMedium"
-                android:layout_width="wrap_content"
+                android:id="@+id/tv_web_host"
+                style="?attr/textAppearanceBodyMedium"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:paddingStart="12dp"
-                android:text="09:30 AM" />
+                android:paddingTop="4dp"
+                android:text="levelup.technikh.com" />
+
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/tv_web_student_name"
+                style="?attr/textAppearanceBodyMedium"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:paddingTop="2dp"
+                android:text="By - Student" />
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:paddingTop="6dp">
+
+                <com.google.android.material.textview.MaterialTextView
+                    android:id="@+id/tv_web_date"
+                    style="?attr/textAppearanceLabelMedium"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Aug 28, 2026" />
+
+                <com.google.android.material.textview.MaterialTextView
+                    android:id="@+id/tv_web_time"
+                    style="?attr/textAppearanceLabelMedium"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingStart="12dp"
+                    android:text="09:30 AM" />
+
+            </LinearLayout>
 
         </LinearLayout>
+
+        <ImageButton
+            android:id="@+id/btn_web_whitelist"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_gravity="center_vertical"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Add to website whitelist"
+            android:padding="12dp"
+            android:src="@drawable/ic_whitelist_outline"
+            app:tint="?attr/colorPrimary" />
+
 
     </LinearLayout>
 

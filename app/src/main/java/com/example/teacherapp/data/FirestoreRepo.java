@@ -5,6 +5,7 @@ import androidx.annotation.NonNull;
 import com.example.teacherapp.model.Classroom;
 import com.example.teacherapp.model.UsageLog;
 import com.example.teacherapp.model.WhitelistedApp;
+import com.example.teacherapp.model.WhitelistedWebsite;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.firestore.DocumentReference;
@@ -17,6 +18,7 @@ public class FirestoreRepo {
     private FirebaseFirestore firestore;
     private final String CLASSROOM_COLLECTION = "classrooms";
     private final String WHITELIST_COLLECTION = "whitelistedApps";
+    private final String WEBSITE_WHITELIST_COLLECTION = "whitelistedWebsites";
 
     public FirestoreRepo() {
         firestore = FirebaseFirestore.getInstance();
@@ -102,6 +104,44 @@ public class FirestoreRepo {
                 .document(classCode)
                 .collection(WHITELIST_COLLECTION)
                 .document(packageName)
+                .delete()
+                .addOnSuccessListener(onSuccess)
+                .addOnFailureListener(onFailure);
+    }
+
+    public void addWhitelistedWebsite(String classCode,
+                                      WhitelistedWebsite website,
+                                      OnSuccessListener<Void> onSuccess,
+                                      OnFailureListener onFailure) {
+        firestore.collection(CLASSROOM_COLLECTION)
+                .document(classCode)
+                .collection(WEBSITE_WHITELIST_COLLECTION)
+                .document(website.getHost())
+                .set(website)
+                .addOnSuccessListener(onSuccess)
+                .addOnFailureListener(onFailure);
+    }
+
+    public void fetchWhitelistedWebsites(String classCode,
+                                         OnSuccessListener<QuerySnapshot> onSuccess,
+                                         OnFailureListener onFailure) {
+        firestore.collection(CLASSROOM_COLLECTION)
+                .document(classCode)
+                .collection(WEBSITE_WHITELIST_COLLECTION)
+                .orderBy("host", Query.Direction.ASCENDING)
+                .get()
+                .addOnSuccessListener(onSuccess)
+                .addOnFailureListener(onFailure);
+    }
+
+    public void removeWhitelistedWebsite(String classCode,
+                                         String host,
+                                         OnSuccessListener<Void> onSuccess,
+                                         OnFailureListener onFailure) {
+        firestore.collection(CLASSROOM_COLLECTION)
+                .document(classCode)
+                .collection(WEBSITE_WHITELIST_COLLECTION)
+                .document(host)
                 .delete()
                 .addOnSuccessListener(onSuccess)
                 .addOnFailureListener(onFailure);

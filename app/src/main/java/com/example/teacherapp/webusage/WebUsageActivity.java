@@ -14,6 +14,7 @@ import com.example.teacherapp.R;
 import com.example.teacherapp.data.FirestoreRepo;
 import com.example.teacherapp.databinding.ActivityWebUsageBinding;
 import com.example.teacherapp.model.WebUsageLog;
+import com.example.teacherapp.model.WhitelistedWebsite;
 import com.example.teacherapp.ui.WebUsageLogAdapter;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -24,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -53,6 +55,7 @@ public class WebUsageActivity extends AppCompatActivity {
     private FirestoreRepo firestoreRepo;
     private final List<WebUsageLog> allWebUsageLogList = new ArrayList<>();
     private final List<WebUsageLogAdapter.DisplayItem> displayItems = new ArrayList<>();
+    private final Set<String> whitelistedHosts = new HashSet<>();
     private WebUsageLogAdapter adapter;
     private String classCode;
     private DateFilter dateFilter = DateFilter.TODAY;
@@ -79,7 +82,9 @@ public class WebUsageActivity extends AppCompatActivity {
         toolbar.setOnMenuItemClickListener(menuItem -> {
             int id = menuItem.getItemId();
             if (id == R.id.btn_menu_web_refresh) {
-                loadWebUsageLogs();
+                loadWebUsageData();
+            } else if (id == R.id.btn_menu_web_whitelist) {
+                showWhitelistedWebsitesDialog();
             } else if (id == R.id.btn_menu_web_date_filter) {
                 showDateFilterDialog();
             } else if (id == R.id.btn_menu_web_filter) {
@@ -94,9 +99,9 @@ public class WebUsageActivity extends AppCompatActivity {
             return true;
         });
 
-        binding.swipeRefreshWebUsage.setOnRefreshListener(this::loadWebUsageLogs);
+        binding.swipeRefreshWebUsage.setOnRefreshListener(this::loadWebUsageData);
         setupRecyclerView();
-        loadWebUsageLogs();
+        loadWebUsageData();
     }
 
     private void applyStatusBarInsets() {
@@ -114,15 +119,41 @@ public class WebUsageActivity extends AppCompatActivity {
     }
 
     private void setupRecyclerView() {
-        adapter = new WebUsageLogAdapter(displayItems, viewMode, this::showWebUsageLogDialog);
+        adapter = new WebUsageLogAdapter(displayItems, whitelistedHosts, viewMode,
+                new WebUsageLogAdapter.OnWebUsageLogClickListener() {
+                    @Override
+                    public void onLogClick(WebUsageLog webUsageLog) {
+                        showWebUsageLogDialog(webUsageLog);
+                    }
+
+                    @Override
+                    public void onWhitelistClick(WebUsageLog webUsageLog) {
+                        confirmToggleWebsiteWhitelist(webUsageLog);
+                    }
+                });
         binding.rvWebUsage.setLayoutManager(new LinearLayoutManager(this));
         binding.rvWebUsage.setAdapter(adapter);
     }
 
-    private void loadWebUsageLogs() {
+    private void loadWebUsageData() {
         if (!binding.swipeRefreshWebUsage.isRefreshing()) {
             showLoading();
         }
+
+        firestoreRepo.fetchWhitelistedWebsites(classCode, whitelistSnapshot -> {
+            whitelistedHosts.clear();
+            List<WhitelistedWebsite> websites = whitelistSnapshot.toObjects(WhitelistedWebsite.class);
+            for (WhitelistedWebsite website : websites) {
+                whitelistedHosts.add(website.getHost());
+            }
+            loadWebUsageLogs();
+        }, e -> {
+            whitelistedHosts.clear();
+            loadWebUsageLogs();
+        });
+    }
+
+    private void loadWebUsageLogs() {
 
         firestoreRepo.fetchWebUsageLogs(classCode, querySnapshot -> {
             binding.swipeRefreshWebUsage.setRefreshing(false);
@@ -164,6 +195,7 @@ public class WebUsageActivity extends AppCompatActivity {
         }
 
         adapter.setViewMode(viewMode);
+        adapter.setWhitelistedHosts(whitelistedHosts);
         adapter.setItems(newDisplayItems);
         updateFilterSummary(filteredLogs.size());
 
@@ -233,7 +265,106 @@ public class WebUsageActivity extends AppCompatActivity {
 
         new MaterialAlertDialogBuilder(this)
                 .setView(dialogView)
-                .setPositiveButton(android.R.string.ok, null)
+                .setPositiveButton(whitelistedHosts.contains(webUsageLog.getHost()) ? "Remove Whitelist" : "Whitelist Website",
+                        (dialog, which) -> confirmToggleWebsiteWhitelist(webUsageLog))
+                .setNegativeButton("Close", null)
+                .show();
+    }
+
+    private void confirmToggleWebsiteWhitelist(WebUsageLog webUsageLog) {
+        String host = webUsageLog.getHost();
+        if (host == null || host.trim().isEmpty()) {
+            Toast.makeText(this, "No host found for this website", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        boolean isWhitelisted = whitelistedHosts.contains(host);
+        String title = safeText(webUsageLog.getTitle()).equals("Unknown") ? host : webUsageLog.getTitle();
+        String dialogTitle = isWhitelisted ? "Remove from whitelist?" : "Add to whitelist?";
+        String message = title + "\n" + host;
+
+        new MaterialAlertDialogBuilder(this)
+                .setTitle(dialogTitle)
+                .setMessage(message)
+                .setPositiveButton(isWhitelisted ? "Remove" : "Add", (dialog, which) -> {
+                    if (isWhitelisted) {
+                        removeWebsiteFromWhitelist(host, title);
+                    } else {
+                        addWebsiteToWhitelist(host, title, webUsageLog.getUrl());
+                    }
+                })
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void addWebsiteToWhitelist(String host, String title, String url) {
+        WhitelistedWebsite website = new WhitelistedWebsite(host, title, url, System.currentTimeMillis());
+        firestoreRepo.addWhitelistedWebsite(classCode, website,
+                unused -> {
+                    whitelistedHosts.add(host);
+                    applyFiltersAndRender();
+                    Toast.makeText(this, host + " whitelisted", Toast.LENGTH_SHORT).show();
+                },
+                e -> Toast.makeText(this, "Could not whitelist website", Toast.LENGTH_SHORT).show());
+    }
+
+    private void removeWebsiteFromWhitelist(String host, String title) {
+        firestoreRepo.removeWhitelistedWebsite(classCode, host,
+                unused -> {
+                    whitelistedHosts.remove(host);
+                    applyFiltersAndRender();
+                    Toast.makeText(this, title + " removed", Toast.LENGTH_SHORT).show();
+                },
+                e -> Toast.makeText(this, "Could not remove website", Toast.LENGTH_SHORT).show());
+    }
+
+    private void showWhitelistedWebsitesDialog() {
+        firestoreRepo.fetchWhitelistedWebsites(classCode, querySnapshot -> {
+            List<WhitelistedWebsite> websites = querySnapshot.toObjects(WhitelistedWebsite.class);
+            if (websites.isEmpty()) {
+                new MaterialAlertDialogBuilder(this)
+                        .setTitle("Whitelisted Websites")
+                        .setMessage("No websites are whitelisted for this class.")
+                        .setPositiveButton(android.R.string.ok, null)
+                        .show();
+                return;
+            }
+
+            String[] websiteLabels = new String[websites.size()];
+            for (int i = 0; i < websites.size(); i++) {
+                WhitelistedWebsite website = websites.get(i);
+                websiteLabels[i] = website.getHost() + "\n" + safeText(website.getTitle());
+            }
+
+            final int[] selectedIndex = {-1};
+            androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                    .setTitle("Whitelisted Websites")
+                    .setSingleChoiceItems(websiteLabels, -1, (choiceDialog, which) -> selectedIndex[0] = which)
+                    .setPositiveButton("Remove", null)
+                    .setNegativeButton("Close", null)
+                    .show();
+
+            dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE)
+                    .setOnClickListener(view -> {
+                        if (selectedIndex[0] == -1) {
+                            Toast.makeText(this, "Select a website to remove", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        confirmRemoveWhitelistedWebsite(websites.get(selectedIndex[0]), dialog);
+                    });
+        }, e -> Toast.makeText(this, "Could not load whitelisted websites", Toast.LENGTH_SHORT).show());
+    }
+
+    private void confirmRemoveWhitelistedWebsite(WhitelistedWebsite website,
+                                                 androidx.appcompat.app.AlertDialog listDialog) {
+        new MaterialAlertDialogBuilder(this)
+                .setTitle("Remove from whitelist?")
+                .setMessage(website.getHost() + "\n" + safeText(website.getTitle()))
+                .setPositiveButton("Remove", (dialog, which) -> {
+                    removeWebsiteFromWhitelist(website.getHost(), safeText(website.getTitle()));
+                    listDialog.dismiss();
+                })
+                .setNegativeButton("Cancel", null)
                 .show();
     }
 

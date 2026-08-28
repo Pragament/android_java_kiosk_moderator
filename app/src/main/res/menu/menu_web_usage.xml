@@ -5,6 +5,9 @@
         android:id="@+id/btn_menu_web_refresh"
         android:title="Refresh" />
     <item
+        android:id="@+id/btn_menu_web_whitelist"
+        android:title="Whitelisted Websites" />
+    <item
         android:id="@+id/btn_menu_web_date_filter"
         android:title="Date Filter" />
     <item
