@@ -8,6 +8,9 @@
         android:id="@+id/btn_menu_web_whitelist"
         android:title="Whitelisted Websites" />
     <item
+        android:id="@+id/btn_menu_web_add_website"
+        android:title="Add Website" />
+    <item
         android:id="@+id/btn_menu_web_date_filter"
         android:title="Date Filter" />
     <item

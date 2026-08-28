@@ -1,5 +1,6 @@
 package com.example.teacherapp.webusage;
 
+import android.net.Uri;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Toast;
@@ -19,6 +20,7 @@ import com.example.teacherapp.ui.WebUsageLogAdapter;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textview.MaterialTextView;
+import com.google.android.material.textfield.TextInputEditText;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -85,6 +87,8 @@ public class WebUsageActivity extends AppCompatActivity {
                 loadWebUsageData();
             } else if (id == R.id.btn_menu_web_whitelist) {
                 showWhitelistedWebsitesDialog();
+            } else if (id == R.id.btn_menu_web_add_website) {
+                showWebsiteEditorDialog(null);
             } else if (id == R.id.btn_menu_web_date_filter) {
                 showDateFilterDialog();
             } else if (id == R.id.btn_menu_web_filter) {
@@ -341,6 +345,7 @@ public class WebUsageActivity extends AppCompatActivity {
                     .setTitle("Whitelisted Websites")
                     .setSingleChoiceItems(websiteLabels, -1, (choiceDialog, which) -> selectedIndex[0] = which)
                     .setPositiveButton("Remove", null)
+                    .setNeutralButton("Edit", null)
                     .setNegativeButton("Close", null)
                     .show();
 
@@ -352,7 +357,106 @@ public class WebUsageActivity extends AppCompatActivity {
                         }
                         confirmRemoveWhitelistedWebsite(websites.get(selectedIndex[0]), dialog);
                     });
+            dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_NEUTRAL)
+                    .setOnClickListener(view -> {
+                        if (selectedIndex[0] == -1) {
+                            Toast.makeText(this, "Select a website to edit", Toast.LENGTH_SHORT).show();
+                            return;
+                        }
+                        showWebsiteEditorDialog(websites.get(selectedIndex[0]));
+                        dialog.dismiss();
+                    });
         }, e -> Toast.makeText(this, "Could not load whitelisted websites", Toast.LENGTH_SHORT).show());
+    }
+
+    private void showWebsiteEditorDialog(WhitelistedWebsite website) {
+        View dialogView = getLayoutInflater().inflate(R.layout.dialog_edit_whitelisted_website, null);
+        TextInputEditText etWebsiteUrl = dialogView.findViewById(R.id.et_website_url);
+        TextInputEditText etWebsiteTitle = dialogView.findViewById(R.id.et_website_title);
+        boolean editing = website != null;
+
+        if (editing) {
+            etWebsiteUrl.setText(safeText(website.getUrl()).equals("Unknown") ? website.getHost() : website.getUrl());
+            etWebsiteTitle.setText(safeText(website.getTitle()).equals("Unknown") ? "" : website.getTitle());
+        }
+
+        androidx.appcompat.app.AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setTitle(editing ? "Edit Website" : "Add Website")
+                .setView(dialogView)
+                .setPositiveButton(editing ? "Save" : "Add", null)
+                .setNegativeButton("Cancel", null)
+                .show();
+
+        dialog.getButton(androidx.appcompat.app.AlertDialog.BUTTON_POSITIVE)
+                .setOnClickListener(view -> {
+                    String rawUrl = etWebsiteUrl.getText() == null ? "" : etWebsiteUrl.getText().toString().trim();
+                    String host = extractHost(rawUrl);
+                    if (host == null) {
+                        Toast.makeText(this, "Enter a valid website URL or host", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+
+                    String rawTitle = etWebsiteTitle.getText() == null ? "" : etWebsiteTitle.getText().toString().trim();
+                    String title = rawTitle.isEmpty() ? host : rawTitle;
+                    String normalizedUrl = normalizeUrl(rawUrl, host);
+                    saveEditedWebsite(website, new WhitelistedWebsite(host, title, normalizedUrl, System.currentTimeMillis()));
+                    dialog.dismiss();
+                });
+    }
+
+    private void saveEditedWebsite(WhitelistedWebsite oldWebsite, WhitelistedWebsite newWebsite) {
+        String oldHost = oldWebsite == null ? null : oldWebsite.getHost();
+        if (oldHost != null && !oldHost.equals(newWebsite.getHost())) {
+            firestoreRepo.removeWhitelistedWebsite(classCode, oldHost, unused -> {
+                whitelistedHosts.remove(oldHost);
+                addManualWebsiteToWhitelist(newWebsite);
+            }, e -> Toast.makeText(this, "Could not update website", Toast.LENGTH_SHORT).show());
+        } else {
+            addManualWebsiteToWhitelist(newWebsite);
+        }
+    }
+
+    private void addManualWebsiteToWhitelist(WhitelistedWebsite website) {
+        firestoreRepo.addWhitelistedWebsite(classCode, website,
+                unused -> {
+                    whitelistedHosts.add(website.getHost());
+                    applyFiltersAndRender();
+                    Toast.makeText(this, website.getHost() + " saved", Toast.LENGTH_SHORT).show();
+                },
+                e -> Toast.makeText(this, "Could not save website", Toast.LENGTH_SHORT).show());
+    }
+
+    private String extractHost(String rawUrl) {
+        if (rawUrl == null || rawUrl.trim().isEmpty()) {
+            return null;
+        }
+
+        String value = rawUrl.trim();
+        if (!value.contains("://")) {
+            value = "https://" + value;
+        }
+
+        Uri uri = Uri.parse(value);
+        String host = uri.getHost();
+        if (host == null || host.trim().isEmpty()) {
+            return null;
+        }
+
+        host = host.trim().toLowerCase(Locale.US);
+        return host.startsWith("www.") ? host.substring(4) : host;
+    }
+
+    private String normalizeUrl(String rawUrl, String host) {
+        if (rawUrl == null || rawUrl.trim().isEmpty()) {
+            return "https://" + host;
+        }
+        String value = rawUrl.trim();
+        String normalized = value.contains("://") ? value : "https://" + value;
+        Uri uri = Uri.parse(normalized);
+        String path = uri.getPath() == null ? "" : uri.getPath();
+        String query = uri.getQuery() == null ? "" : "?" + uri.getQuery();
+        String fragment = uri.getFragment() == null ? "" : "#" + uri.getFragment();
+        return uri.getScheme() + "://" + host + path + query + fragment;
     }
 
     private void confirmRemoveWhitelistedWebsite(WhitelistedWebsite website,
