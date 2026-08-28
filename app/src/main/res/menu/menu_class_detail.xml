@@ -8,6 +8,9 @@
         android:id="@+id/btn_menu_detail_whitelist"
         android:title="Whitelisted Apps"/>
     <item
+        android:id="@+id/btn_menu_detail_web_usage"
+        android:title="Web Usage"/>
+    <item
         android:id="@+id/btn_menu_detail_date_filter"
         android:title="Date Filter"/>
     <item

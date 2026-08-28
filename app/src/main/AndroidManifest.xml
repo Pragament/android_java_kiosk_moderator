@@ -14,6 +14,9 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.TeacherApp">
         <activity
+            android:name=".webusage.WebUsageActivity"
+            android:exported="false" />
+        <activity
             android:name=".classdetail.ClassDetailActivity"
             android:exported="false" />
         <activity

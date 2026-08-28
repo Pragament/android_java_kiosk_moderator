@@ -20,6 +20,7 @@ import com.example.teacherapp.databinding.ActivityClassDetailBinding;
 import com.example.teacherapp.model.Classroom;
 import com.example.teacherapp.model.UsageLog;
 import com.example.teacherapp.model.WhitelistedApp;
+import com.example.teacherapp.webusage.WebUsageActivity;
 import com.example.teacherapp.ui.UsageLogAdapter;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -92,6 +93,11 @@ public class ClassDetailActivity extends AppCompatActivity {
                 loadClassData();
             } else if (id == R.id.btn_menu_detail_whitelist) {
                 showWhitelistedAppsDialog();
+            } else if (id == R.id.btn_menu_detail_web_usage) {
+                Intent webUsageIntent = new Intent(this, WebUsageActivity.class)
+                        .putExtra("class_code", classCode)
+                        .putExtra("class_name", toolbar.getTitle());
+                startActivity(webUsageIntent);
             } else if (id == R.id.btn_menu_detail_date_filter) {
                 showDateFilterDialog();
             } else if (id == R.id.btn_menu_detail_filter) {

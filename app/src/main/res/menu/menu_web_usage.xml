@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/btn_menu_web_refresh"
+        android:title="Refresh" />
+    <item
+        android:id="@+id/btn_menu_web_date_filter"
+        android:title="Date Filter" />
+    <item
+        android:id="@+id/btn_menu_web_filter"
+        android:title="Host/Student Filter" />
+    <item
+        android:id="@+id/btn_menu_web_group"
+        android:title="Group By" />
+    <item
+        android:id="@+id/btn_menu_web_view_mode"
+        android:title="View Mode" />
+    <item
+        android:id="@+id/btn_menu_web_sort"
+        android:title="Sort" />
+</menu>

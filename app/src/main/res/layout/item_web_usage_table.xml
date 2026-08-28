@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingHorizontal="8dp"
+    android:paddingVertical="10dp">
+
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/tv_web_table_host"
+        style="?attr/textAppearanceBodyMedium"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1.4"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:text="Host" />
+
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/tv_web_table_student"
+        style="?attr/textAppearanceBodyMedium"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:text="Student" />
+
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/tv_web_table_date"
+        style="?attr/textAppearanceBodySmall"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:text="Aug 28" />
+
+    <com.google.android.material.textview.MaterialTextView
+        android:id="@+id/tv_web_table_time"
+        style="?attr/textAppearanceBodySmall"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight=".8"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:text="09:30" />
+
+</LinearLayout>

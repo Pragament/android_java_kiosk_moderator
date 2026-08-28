@@ -57,6 +57,18 @@ public class FirestoreRepo {
                 .addOnFailureListener(onFailure);
     }
 
+    public void fetchWebUsageLogs(String classCode,
+                                  OnSuccessListener<QuerySnapshot> onSuccess,
+                                  OnFailureListener onFailure) {
+        firestore.collection(CLASSROOM_COLLECTION)
+                .document(classCode)
+                .collection("webUsageLogs")
+                .orderBy("timestamp", Query.Direction.DESCENDING)
+                .get()
+                .addOnSuccessListener(onSuccess)
+                .addOnFailureListener(onFailure);
+    }
+
     public void addWhitelistedApp(String classCode,
                                   WhitelistedApp app,
                                   OnSuccessListener<Void> onSuccess,
