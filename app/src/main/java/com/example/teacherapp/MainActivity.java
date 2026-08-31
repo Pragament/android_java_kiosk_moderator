@@ -1,40 +1,47 @@
 package com.example.teacherapp;
 
 import android.content.ClipData;
-import android.content.ClipDescription;
 import android.content.ClipboardManager;
 import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
-import android.graphics.drawable.Drawable;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.MotionEvent;
 import android.view.View;
-import android.widget.EditText;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
-import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.example.teacherapp.classdetail.ClassDetailActivity;
 import com.example.teacherapp.data.FirestoreRepo;
 import com.example.teacherapp.databinding.ActivityMainBinding;
+import com.example.teacherapp.model.ClassSection;
 import com.example.teacherapp.model.Classroom;
+import com.example.teacherapp.model.Student;
 import com.example.teacherapp.ui.ClassAdapter;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.DocumentReference;
 
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class MainActivity extends AppCompatActivity {
@@ -43,7 +50,10 @@ public class MainActivity extends AppCompatActivity {
     private FirestoreRepo firetoreRepo;
     private PrefManager prefManager;
     private List<Classroom> classroomList;
+    private List<ClassSection> classSectionList;
     private ClassAdapter adapter;
+    private ClassSection pendingImportSection;
+    private ActivityResultLauncher<String[]> csvPickerLauncher;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,17 +65,27 @@ public class MainActivity extends AppCompatActivity {
         firetoreRepo = new FirestoreRepo();
         prefManager = new PrefManager(this);
         classroomList = new ArrayList<>();
+        classSectionList = new ArrayList<>();
+        csvPickerLauncher = registerForActivityResult(new ActivityResultContracts.OpenDocument(), this::handleCsvPicked);
 
         loadClassrooms();
-        binding.fabCreateClass.setOnClickListener( v -> showCreateClassDialog());
+        loadClassSections();
+        binding.fabCreateClass.setOnClickListener(v -> showCreateClassDialog());
 
         MaterialToolbar toolbarMain = findViewById(R.id.toolbar_main);
         toolbarMain.setNavigationOnClickListener(v -> {
-            // show dialog with more information
-            Toast.makeText(MainActivity.this, FirebaseAuth.getInstance()
-                    .getCurrentUser().getDisplayName(), Toast.LENGTH_SHORT).show();
+            if (FirebaseAuth.getInstance().getCurrentUser() != null) {
+                Toast.makeText(MainActivity.this, FirebaseAuth.getInstance()
+                        .getCurrentUser().getDisplayName(), Toast.LENGTH_SHORT).show();
+            }
         });
-
+        toolbarMain.setOnMenuItemClickListener(menuItem -> {
+            if (menuItem.getItemId() == R.id.btn_menu_main_sections) {
+                showClassSectionsDialog();
+                return true;
+            }
+            return false;
+        });
     }
 
     private void applyStatusBarInsets() {
@@ -77,11 +97,7 @@ public class MainActivity extends AppCompatActivity {
 
         ViewCompat.setOnApplyWindowInsetsListener(appBar, (view, insets) -> {
             Insets statusBars = insets.getInsets(WindowInsetsCompat.Type.statusBars());
-            view.setPadding(
-                    initialLeft,
-                    initialTop + statusBars.top,
-                    initialRight,
-                    initialBottom);
+            view.setPadding(initialLeft, initialTop + statusBars.top, initialRight, initialBottom);
             return insets;
         });
     }
@@ -96,6 +112,16 @@ public class MainActivity extends AppCompatActivity {
                     Log.e("Classrooms", "Error fetching classrooms", e);
                 }
         );
+    }
+
+    private void loadClassSections() {
+        firetoreRepo.fetchClassSections(prefManager.getUserId(), querySnapshot -> {
+            classSectionList.clear();
+            classSectionList.addAll(querySnapshot.toObjects(ClassSection.class));
+            classSectionList.sort((left, right) -> Long.compare(
+                    right.getCreatedAt() == null ? 0 : right.getCreatedAt(),
+                    left.getCreatedAt() == null ? 0 : left.getCreatedAt()));
+        }, e -> Toast.makeText(this, "Could not load class-sections", Toast.LENGTH_SHORT).show());
     }
 
     private void handleClassroomsLoaded(List<Classroom> classrooms) {
@@ -122,6 +148,209 @@ public class MainActivity extends AppCompatActivity {
         binding.rvClassroom.setAdapter(adapter);
     }
 
+    private void showClassSectionsDialog() {
+        String[] sectionLabels = buildSectionLabels();
+        final int[] selectedIndex = {-1};
+
+        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setTitle("Class-Sections")
+                .setSingleChoiceItems(sectionLabels, -1, (choiceDialog, which) -> selectedIndex[0] = which)
+                .setPositiveButton("Import CSV", null)
+                .setNeutralButton("Create", null)
+                .setNegativeButton("Close", null)
+                .show();
+
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
+            if (classSectionList.isEmpty() || selectedIndex[0] == -1) {
+                Toast.makeText(this, "Select a class-section first", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            pendingImportSection = classSectionList.get(selectedIndex[0]);
+            csvPickerLauncher.launch(new String[]{"text/*", "text/comma-separated-values", "application/csv"});
+            dialog.dismiss();
+        });
+
+        dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(view -> {
+            showCreateClassSectionDialog();
+            dialog.dismiss();
+        });
+    }
+
+    private String[] buildSectionLabels() {
+        if (classSectionList.isEmpty()) {
+            return new String[]{"No class-sections yet"};
+        }
+
+        String[] labels = new String[classSectionList.size()];
+        for (int i = 0; i < classSectionList.size(); i++) {
+            ClassSection section = classSectionList.get(i);
+            long studentCount = section.getStudentCount() == null ? 0 : section.getStudentCount();
+            labels[i] = section.getSectionName() + "\n" + studentCount + " students";
+        }
+        return labels;
+    }
+
+    private void showCreateClassSectionDialog() {
+        TextInputEditText input = new TextInputEditText(this);
+        input.setHint("Class-Section Name");
+        input.setSingleLine(true);
+        input.setPadding(40, 20, 40, 0);
+
+        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setTitle("Create Class-Section")
+                .setView(input)
+                .setPositiveButton("Create", null)
+                .setNegativeButton("Cancel", null)
+                .show();
+
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
+            String sectionName = input.getText() == null ? "" : input.getText().toString().trim();
+            if (sectionName.isEmpty()) {
+                Toast.makeText(this, "Enter class-section name", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            createClassSection(sectionName, dialog);
+        });
+    }
+
+    private void createClassSection(String sectionName, AlertDialog dialog) {
+        DocumentReference reference = firetoreRepo.newClassSectionReference();
+        ClassSection section = new ClassSection(
+                reference.getId(),
+                sectionName,
+                prefManager.getUserId(),
+                System.currentTimeMillis(),
+                0L);
+        firetoreRepo.createClassSection(section, unused -> {
+            classSectionList.add(0, section);
+            Toast.makeText(this, "Class-section created", Toast.LENGTH_SHORT).show();
+            dialog.dismiss();
+        }, e -> Toast.makeText(this, "Could not create class-section", Toast.LENGTH_SHORT).show());
+    }
+
+    private void handleCsvPicked(Uri uri) {
+        if (uri == null || pendingImportSection == null) {
+            pendingImportSection = null;
+            return;
+        }
+
+        try {
+            List<Student> students = parseStudentsCsv(uri);
+            if (students.isEmpty()) {
+                Toast.makeText(this, "No students found in CSV", Toast.LENGTH_SHORT).show();
+                pendingImportSection = null;
+                return;
+            }
+
+            ClassSection importSection = pendingImportSection;
+            firetoreRepo.importStudents(importSection.getSectionId(), students, unused -> {
+                importSection.setStudentCount((long) students.size());
+                Toast.makeText(this, students.size() + " students imported", Toast.LENGTH_SHORT).show();
+                pendingImportSection = null;
+                loadClassSections();
+            }, e -> {
+                Toast.makeText(this, "Could not import students", Toast.LENGTH_SHORT).show();
+                pendingImportSection = null;
+            });
+        } catch (Exception e) {
+            Log.e("ClassSections", "CSV import failed", e);
+            Toast.makeText(this, "Invalid CSV file", Toast.LENGTH_SHORT).show();
+            pendingImportSection = null;
+        }
+    }
+
+    private List<Student> parseStudentsCsv(Uri uri) throws Exception {
+        List<Student> students = new ArrayList<>();
+        InputStream inputStream = getContentResolver().openInputStream(uri);
+        if (inputStream == null) {
+            return students;
+        }
+
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))) {
+            String headerLine = reader.readLine();
+            if (headerLine == null) {
+                return students;
+            }
+
+            List<String> headers = parseCsvLine(headerLine);
+            Map<String, Integer> headerIndex = new HashMap<>();
+            for (int i = 0; i < headers.size(); i++) {
+                headerIndex.put(headers.get(i).trim().toLowerCase(Locale.US), i);
+            }
+
+            int admissionIndex = getColumnIndex(headerIndex, "admission_no", "admission no", "admission");
+            int nameIndex = getColumnIndex(headerIndex, "name", "student_name", "student name");
+            int phoneIndex = getColumnIndex(headerIndex, "phone", "mobile", "phone_no", "phone no");
+
+            String line;
+            int generatedId = 1;
+            while ((line = reader.readLine()) != null) {
+                if (line.trim().isEmpty()) {
+                    continue;
+                }
+
+                List<String> values = parseCsvLine(line);
+                String admissionNo = getCsvValue(values, admissionIndex);
+                String name = getCsvValue(values, nameIndex);
+                String phone = getCsvValue(values, phoneIndex);
+                if (admissionNo.isEmpty() && name.isEmpty() && phone.isEmpty()) {
+                    continue;
+                }
+                if (admissionNo.isEmpty()) {
+                    admissionNo = "student_" + generatedId++;
+                }
+                students.add(new Student(sanitizeDocumentId(admissionNo), name, phone));
+            }
+        }
+        return students;
+    }
+
+    private int getColumnIndex(Map<String, Integer> headerIndex, String... names) {
+        for (String name : names) {
+            Integer index = headerIndex.get(name);
+            if (index != null) {
+                return index;
+            }
+        }
+        return -1;
+    }
+
+    private String getCsvValue(List<String> values, int index) {
+        if (index < 0 || index >= values.size()) {
+            return "";
+        }
+        return values.get(index).trim();
+    }
+
+    private List<String> parseCsvLine(String line) {
+        List<String> values = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        boolean inQuotes = false;
+        for (int i = 0; i < line.length(); i++) {
+            char value = line.charAt(i);
+            if (value == '"') {
+                if (inQuotes && i + 1 < line.length() && line.charAt(i + 1) == '"') {
+                    current.append('"');
+                    i++;
+                } else {
+                    inQuotes = !inQuotes;
+                }
+            } else if (value == ',' && !inQuotes) {
+                values.add(current.toString());
+                current.setLength(0);
+            } else {
+                current.append(value);
+            }
+        }
+        values.add(current.toString());
+        return values;
+    }
+
+    private String sanitizeDocumentId(String value) {
+        String sanitized = value.trim().replace("/", "_");
+        return sanitized.isEmpty() ? String.valueOf(System.currentTimeMillis()) : sanitized;
+    }
+
     private void showCreateClassDialog() {
         View dialogLayout = View.inflate(this, R.layout.dialog_create_classroom, null);
 
@@ -136,33 +365,59 @@ public class MainActivity extends AppCompatActivity {
         dialog.show();
 
         TextInputEditText etClassName = dialogLayout.findViewById(R.id.et_class_name);
+        TextInputEditText etClassSection = dialogLayout.findViewById(R.id.et_class_section);
         TextInputEditText etClassCode = dialogLayout.findViewById(R.id.et_class_code);
+        TextInputLayout tilClassSection = dialogLayout.findViewById(R.id.til_class_section);
         TextInputLayout tilClassCode = dialogLayout.findViewById(R.id.til_class_code);
 
         String classCode = generateClassCode();
+        final ClassSection[] selectedSection = {null};
         etClassCode.setText(classCode);
-
-        tilClassCode.setEndIconOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                String code = etClassCode.getEditableText().toString();
-                ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
-                ClipData data = ClipData.newPlainText("classroom_code", code);
-                clipboard.setPrimaryClip(data);
-                Toast.makeText(MainActivity.this, "Copied: " + code, Toast.LENGTH_SHORT).show();
-            }
-        });
+        etClassSection.setOnClickListener(view -> showSectionPicker(selectedSection, etClassSection));
+        tilClassSection.setEndIconOnClickListener(view -> showSectionPicker(selectedSection, etClassSection));
+        tilClassCode.setEndIconOnClickListener(view -> copyClassCode(etClassCode));
 
         dialog.getButton(AlertDialog.BUTTON_POSITIVE)
                 .setOnClickListener(v -> {
                     String className = etClassName.getText() != null ? etClassName.getText().toString().trim() : "";
 
-                    if (!className.isEmpty()) {
-                        createClassroom(className, classCode, dialog);
-                    } else {
+                    if (className.isEmpty()) {
                         Toast.makeText(this, "Enter classroom name", Toast.LENGTH_SHORT).show();
+                    } else if (selectedSection[0] == null) {
+                        Toast.makeText(this, "Choose a class-section", Toast.LENGTH_SHORT).show();
+                    } else {
+                        createClassroom(className, classCode, selectedSection[0], dialog);
                     }
                 });
+    }
+
+    private void showSectionPicker(ClassSection[] selectedSection, TextInputEditText etClassSection) {
+        if (classSectionList.isEmpty()) {
+            new MaterialAlertDialogBuilder(this)
+                    .setTitle("No Class-Sections")
+                    .setMessage("Create a class-section before creating a classroom.")
+                    .setPositiveButton("Create", (dialog, which) -> showCreateClassSectionDialog())
+                    .setNegativeButton("Cancel", null)
+                    .show();
+            return;
+        }
+
+        String[] labels = buildSectionLabels();
+        new MaterialAlertDialogBuilder(this)
+                .setTitle("Choose Class-Section")
+                .setItems(labels, (dialog, which) -> {
+                    selectedSection[0] = classSectionList.get(which);
+                    etClassSection.setText(selectedSection[0].getSectionName());
+                })
+                .show();
+    }
+
+    private void copyClassCode(TextInputEditText etClassCode) {
+        String code = etClassCode.getEditableText() == null ? "" : etClassCode.getEditableText().toString();
+        ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+        ClipData data = ClipData.newPlainText("classroom_code", code);
+        clipboard.setPrimaryClip(data);
+        Toast.makeText(MainActivity.this, "Copied: " + code, Toast.LENGTH_SHORT).show();
     }
 
     private String generateClassCode() {
@@ -182,9 +437,18 @@ public class MainActivity extends AppCompatActivity {
         return false;
     }
 
-    private void createClassroom(String className, String classCode, AlertDialog dialog) {
-        String name = FirebaseAuth.getInstance().getCurrentUser().getDisplayName();
-        Classroom classroom = new Classroom(className, classCode, name, prefManager.getUserId(), System.currentTimeMillis());
+    private void createClassroom(String className, String classCode, ClassSection section, AlertDialog dialog) {
+        String name = FirebaseAuth.getInstance().getCurrentUser() == null
+                ? ""
+                : FirebaseAuth.getInstance().getCurrentUser().getDisplayName();
+        Classroom classroom = new Classroom(
+                className,
+                classCode,
+                name,
+                prefManager.getUserId(),
+                System.currentTimeMillis(),
+                section.getSectionId(),
+                section.getSectionName());
         firetoreRepo.createClassroom(classroom,
                 queryDocumentSnapshots -> {
                     Toast.makeText(this, "Class created", Toast.LENGTH_SHORT).show();
@@ -202,11 +466,13 @@ public class MainActivity extends AppCompatActivity {
         binding.rvClassroom.setVisibility(View.GONE);
         binding.tvNoClassroom.setVisibility(View.GONE);
     }
+
     private void showMainView() {
         binding.pbLoadingClass.setVisibility(View.GONE);
         binding.rvClassroom.setVisibility(View.VISIBLE);
         binding.tvNoClassroom.setVisibility(View.GONE);
     }
+
     private void showNoClassroom(String message) {
         binding.pbLoadingClass.setVisibility(View.GONE);
         binding.rvClassroom.setVisibility(View.GONE);

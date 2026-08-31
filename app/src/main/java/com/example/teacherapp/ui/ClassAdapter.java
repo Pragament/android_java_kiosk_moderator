@@ -39,6 +39,13 @@ public class ClassAdapter extends RecyclerView.Adapter<ClassAdapter.ViewHolder> 
         Classroom classroom = classroomList.get(position);
         holder.tvClassName.setText(classroom.getClassName());
         holder.tvClassCode.setText("Code: " + classroom.getClassCode());
+        String sectionName = classroom.getSectionName();
+        if (sectionName == null || sectionName.trim().isEmpty()) {
+            holder.tvClassSection.setVisibility(View.GONE);
+        } else {
+            holder.tvClassSection.setVisibility(View.VISIBLE);
+            holder.tvClassSection.setText("Section: " + sectionName);
+        }
 
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) listener.onClassroomClick(classroom);
@@ -51,11 +58,12 @@ public class ClassAdapter extends RecyclerView.Adapter<ClassAdapter.ViewHolder> 
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
-        MaterialTextView tvClassName, tvClassCode;
+        MaterialTextView tvClassName, tvClassCode, tvClassSection;
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
             tvClassName = itemView.findViewById(R.id.tv_item_class_name);
             tvClassCode = itemView.findViewById(R.id.tv_item_class_code);
+            tvClassSection = itemView.findViewById(R.id.tv_item_class_section);
         }
     }
 

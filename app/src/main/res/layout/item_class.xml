@@ -30,5 +30,13 @@
             android:paddingTop="4dp"
             android:text="Code: XYZ123"/>
 
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/tv_item_class_section"
+            style="?attr/textAppearanceBodyMedium"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="2dp"
+            android:text="Section: VIII" />
+
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>
