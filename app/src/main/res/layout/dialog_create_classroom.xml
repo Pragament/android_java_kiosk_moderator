@@ -25,7 +25,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="15dp"
-        app:endIconMode="dropdown_menu">
+        app:endIconMode="custom"
+        app:endIconDrawable="@drawable/ic_arrow_drop_down">
 
         <com.google.android.material.textfield.TextInputEditText
             android:id="@+id/et_class_section"
