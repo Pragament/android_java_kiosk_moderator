@@ -20,6 +20,7 @@ import com.example.teacherapp.databinding.ActivityClassDetailBinding;
 import com.example.teacherapp.model.Classroom;
 import com.example.teacherapp.model.UsageLog;
 import com.example.teacherapp.model.WhitelistedApp;
+import com.example.teacherapp.submissions.QuizSubmissionsActivity;
 import com.example.teacherapp.webusage.WebUsageActivity;
 import com.example.teacherapp.ui.UsageLogAdapter;
 import com.google.android.material.appbar.MaterialToolbar;
@@ -98,6 +99,11 @@ public class ClassDetailActivity extends AppCompatActivity {
                         .putExtra("class_code", classCode)
                         .putExtra("class_name", toolbar.getTitle());
                 startActivity(webUsageIntent);
+            } else if (id == R.id.btn_menu_detail_submissions) {
+                Intent submissionsIntent = new Intent(this, QuizSubmissionsActivity.class)
+                        .putExtra("class_code", classCode)
+                        .putExtra("class_name", toolbar.getTitle());
+                startActivity(submissionsIntent);
             } else if (id == R.id.btn_menu_detail_date_filter) {
                 showDateFilterDialog();
             } else if (id == R.id.btn_menu_detail_filter) {

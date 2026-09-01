@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/btn_menu_submissions_refresh"
+        android:title="Refresh" />
+    <item
+        android:id="@+id/btn_menu_submissions_filter"
+        android:title="Student/Subject Filter" />
+    <item
+        android:id="@+id/btn_menu_submissions_group"
+        android:title="Group By" />
+    <item
+        android:id="@+id/btn_menu_submissions_view_mode"
+        android:title="View Mode" />
+    <item
+        android:id="@+id/btn_menu_submissions_sort"
+        android:title="Sort" />
+</menu>

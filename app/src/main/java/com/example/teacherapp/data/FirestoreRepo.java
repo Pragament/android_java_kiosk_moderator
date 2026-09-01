@@ -26,6 +26,7 @@ public class FirestoreRepo {
     private final String STUDENT_COLLECTION = "students";
     private final String WHITELIST_COLLECTION = "whitelistedApps";
     private final String WEBSITE_WHITELIST_COLLECTION = "whitelistedWebsites";
+    private final String QUIZ_SUBMISSIONS_COLLECTION = "qb_quiz_submissions_v1";
 
     public FirestoreRepo() {
         firestore = FirebaseFirestore.getInstance();
@@ -116,6 +117,16 @@ public class FirestoreRepo {
                 .document(classCode)
                 .collection("webUsageLogs")
                 .orderBy("timestamp", Query.Direction.DESCENDING)
+                .get()
+                .addOnSuccessListener(onSuccess)
+                .addOnFailureListener(onFailure);
+    }
+
+    public void fetchQuizSubmissions(String classCode,
+                                     OnSuccessListener<QuerySnapshot> onSuccess,
+                                     OnFailureListener onFailure) {
+        firestore.collection(QUIZ_SUBMISSIONS_COLLECTION)
+                .whereEqualTo("classroomId", classCode)
                 .get()
                 .addOnSuccessListener(onSuccess)
                 .addOnFailureListener(onFailure);
