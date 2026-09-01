@@ -25,6 +25,7 @@ import com.example.teacherapp.auth.LoginActivity;
 import com.example.teacherapp.classdetail.ClassDetailActivity;
 import com.example.teacherapp.data.FirestoreRepo;
 import com.example.teacherapp.databinding.ActivityMainBinding;
+import com.example.teacherapp.databinding.DialogEditClassroomBinding;
 import com.example.teacherapp.model.ClassSection;
 import com.example.teacherapp.model.Classroom;
 import com.example.teacherapp.model.Student;
@@ -156,7 +157,7 @@ public class MainActivity extends AppCompatActivity {
         binding.rvClassSectionsPreview.setNestedScrollingEnabled(false);
         binding.rvClassSectionsPreview.setAdapter(classSectionPreviewAdapter);
 
-        classroomPreviewAdapter = new ClassAdapter(new ArrayList<>(), this::openClassroom);
+        classroomPreviewAdapter = new ClassAdapter(new ArrayList<>(), this::openClassroom, this::showEditClassroomDialog);
         binding.rvClassroomsPreview.setLayoutManager(new LinearLayoutManager(this));
         binding.rvClassroomsPreview.setNestedScrollingEnabled(false);
         binding.rvClassroomsPreview.setAdapter(classroomPreviewAdapter);
@@ -297,11 +298,81 @@ public class MainActivity extends AppCompatActivity {
             labels[i] = classroom.getClassName() + "\nCode: " + classroom.getClassCode();
         }
 
-        new MaterialAlertDialogBuilder(this)
+        final int[] selectedIndex = {-1};
+        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
                 .setTitle("Classrooms")
-                .setItems(labels, (dialog, which) -> openClassroom(classroomList.get(which)))
-                .setPositiveButton("Close", null)
+                .setSingleChoiceItems(labels, -1, (choiceDialog, which) -> selectedIndex[0] = which)
+                .setPositiveButton("Open", null)
+                .setNeutralButton("Edit", null)
+                .setNegativeButton("Close", null)
                 .show();
+
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
+            if (selectedIndex[0] == -1) {
+                Toast.makeText(this, "Select a classroom", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            openClassroom(classroomList.get(selectedIndex[0]));
+            dialog.dismiss();
+        });
+
+        dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(view -> {
+            if (selectedIndex[0] == -1) {
+                Toast.makeText(this, "Select a classroom to edit", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            showEditClassroomDialog(classroomList.get(selectedIndex[0]));
+            dialog.dismiss();
+        });
+    }
+
+    private void showEditClassroomDialog(Classroom classroom) {
+        DialogEditClassroomBinding dialogBinding = DialogEditClassroomBinding.inflate(getLayoutInflater());
+        dialogBinding.etEditClassName.setText(classroom.getClassName());
+        dialogBinding.switchClassEnabled.setChecked(classroom.isClassEnabledOrDefault());
+        dialogBinding.switchQuizModeEnabled.setChecked(classroom.isQuizModeEnabledOrDefault());
+
+        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setTitle("Edit Classroom")
+                .setView(dialogBinding.getRoot())
+                .setPositiveButton("Save", null)
+                .setNegativeButton("Cancel", null)
+                .show();
+
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
+            String className = dialogBinding.etEditClassName.getText() == null
+                    ? ""
+                    : dialogBinding.etEditClassName.getText().toString().trim();
+            if (className.isEmpty()) {
+                Toast.makeText(this, "Enter classroom name", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            updateClassroom(classroom,
+                    className,
+                    dialogBinding.switchClassEnabled.isChecked(),
+                    dialogBinding.switchQuizModeEnabled.isChecked(),
+                    dialog);
+        });
+    }
+
+    private void updateClassroom(Classroom classroom,
+                                 String className,
+                                 boolean classEnabled,
+                                 boolean quizModeEnabled,
+                                 AlertDialog dialog) {
+        Map<String, Object> updates = new HashMap<>();
+        updates.put("className", className);
+        updates.put("classEnabled", classEnabled);
+        updates.put("quizModeEnabled", quizModeEnabled);
+
+        firetoreRepo.updateClassroom(classroom.getClassCode(), updates, unused -> {
+            classroom.setClassName(className);
+            classroom.setClassEnabled(classEnabled);
+            classroom.setQuizModeEnabled(quizModeEnabled);
+            renderDashboard();
+            Toast.makeText(this, "Classroom updated", Toast.LENGTH_SHORT).show();
+            dialog.dismiss();
+        }, e -> Toast.makeText(this, "Could not update classroom", Toast.LENGTH_SHORT).show());
     }
 
     private void showStudentsDialog(ClassSection section) {

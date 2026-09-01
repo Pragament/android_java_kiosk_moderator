@@ -4,6 +4,8 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 
+import android.widget.ImageButton;
+
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -16,15 +18,27 @@ import java.util.List;
 public class ClassAdapter extends RecyclerView.Adapter<ClassAdapter.ViewHolder> {
 
     private List<Classroom> classroomList;
-    private OnClassroomClickListener listener;
+    private final OnClassroomClickListener listener;
+    private final OnClassroomEditListener editListener;
 
     public interface OnClassroomClickListener {
         void onClassroomClick(Classroom classroom);
     }
 
+    public interface OnClassroomEditListener {
+        void onClassroomEdit(Classroom classroom);
+    }
+
     public ClassAdapter(List<Classroom> classroomList, OnClassroomClickListener listener) {
+        this(classroomList, listener, null);
+    }
+
+    public ClassAdapter(List<Classroom> classroomList,
+                        OnClassroomClickListener listener,
+                        OnClassroomEditListener editListener) {
         this.classroomList = classroomList;
         this.listener = listener;
+        this.editListener = editListener;
     }
 
     public void setItems(List<Classroom> classrooms) {
@@ -52,10 +66,22 @@ public class ClassAdapter extends RecyclerView.Adapter<ClassAdapter.ViewHolder> 
             holder.tvClassSection.setVisibility(View.VISIBLE);
             holder.tvClassSection.setText("Section: " + sectionName);
         }
+        holder.tvClassStatus.setText(statusText(classroom));
 
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) listener.onClassroomClick(classroom);
         });
+        holder.btnEditClassroom.setOnClickListener(v -> {
+            if (editListener != null) {
+                editListener.onClassroomEdit(classroom);
+            }
+        });
+    }
+
+    private String statusText(Classroom classroom) {
+        String classStatus = classroom.isClassEnabledOrDefault() ? "Class enabled" : "Class disabled";
+        String quizStatus = classroom.isQuizModeEnabledOrDefault() ? "Quiz enabled" : "Quiz disabled";
+        return classStatus + " | " + quizStatus;
     }
 
     @Override
@@ -64,12 +90,16 @@ public class ClassAdapter extends RecyclerView.Adapter<ClassAdapter.ViewHolder> 
     }
 
     public static class ViewHolder extends RecyclerView.ViewHolder {
-        MaterialTextView tvClassName, tvClassCode, tvClassSection;
+        MaterialTextView tvClassName, tvClassCode, tvClassSection, tvClassStatus;
+        ImageButton btnEditClassroom;
+
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
             tvClassName = itemView.findViewById(R.id.tv_item_class_name);
             tvClassCode = itemView.findViewById(R.id.tv_item_class_code);
             tvClassSection = itemView.findViewById(R.id.tv_item_class_section);
+            tvClassStatus = itemView.findViewById(R.id.tv_item_class_status);
+            btnEditClassroom = itemView.findViewById(R.id.btn_edit_classroom);
         }
     }
 

@@ -17,6 +17,7 @@ import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.firestore.WriteBatch;
 
 import java.util.List;
+import java.util.Map;
 
 public class FirestoreRepo {
 
@@ -35,6 +36,17 @@ public class FirestoreRepo {
     public void createClassroom(Classroom classroom, OnSuccessListener<Void> onSuccess, OnFailureListener onFailure) {
         DocumentReference reference = firestore.collection(CLASSROOM_COLLECTION).document(classroom.getClassCode());
         reference.set(classroom)
+                .addOnSuccessListener(onSuccess)
+                .addOnFailureListener(onFailure);
+    }
+
+    public void updateClassroom(String classCode,
+                                Map<String, Object> updates,
+                                OnSuccessListener<Void> onSuccess,
+                                OnFailureListener onFailure) {
+        firestore.collection(CLASSROOM_COLLECTION)
+                .document(classCode)
+                .update(updates)
                 .addOnSuccessListener(onSuccess)
                 .addOnFailureListener(onFailure);
     }

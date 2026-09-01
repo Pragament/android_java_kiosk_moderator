@@ -14,13 +14,34 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <com.google.android.material.textview.MaterialTextView
-            android:id="@+id/tv_item_class_name"
-            style="?attr/textAppearanceTitleMedium"
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Class Name"
-            android:textStyle="bold" />
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <com.google.android.material.textview.MaterialTextView
+                android:id="@+id/tv_item_class_name"
+                style="?attr/textAppearanceTitleMedium"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="Class Name"
+                android:textStyle="bold" />
+
+            <ImageButton
+                android:id="@+id/btn_edit_classroom"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="?attr/selectableItemBackgroundBorderless"
+                android:contentDescription="Edit classroom"
+                android:padding="10dp"
+                android:src="@drawable/ic_edit"
+                app:tint="?attr/colorPrimary" />
+
+        </LinearLayout>
 
         <com.google.android.material.textview.MaterialTextView
             android:id="@+id/tv_item_class_code"
@@ -37,6 +58,14 @@
             android:layout_height="wrap_content"
             android:paddingTop="2dp"
             android:text="Section: VIII" />
+
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/tv_item_class_status"
+            style="?attr/textAppearanceLabelMedium"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:paddingTop="8dp"
+            android:text="Class enabled | Quiz enabled" />
 
     </LinearLayout>
 </com.google.android.material.card.MaterialCardView>

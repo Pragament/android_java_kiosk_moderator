@@ -8,6 +8,8 @@ public class Classroom {
     private Long createdDate;
     private String sectionId;
     private String sectionName;
+    private Boolean classEnabled;
+    private Boolean quizModeEnabled;
 
     public Classroom() {}
 
@@ -29,6 +31,8 @@ public class Classroom {
         this(className, classCode, createdBy, creatorId, createdDate);
         this.sectionId = sectionId;
         this.sectionName = sectionName;
+        this.classEnabled = true;
+        this.quizModeEnabled = true;
     }
 
     public String getClassName() {
@@ -85,5 +89,29 @@ public class Classroom {
 
     public void setSectionName(String sectionName) {
         this.sectionName = sectionName;
+    }
+
+    public Boolean getClassEnabled() {
+        return classEnabled;
+    }
+
+    public void setClassEnabled(Boolean classEnabled) {
+        this.classEnabled = classEnabled;
+    }
+
+    public Boolean getQuizModeEnabled() {
+        return quizModeEnabled;
+    }
+
+    public void setQuizModeEnabled(Boolean quizModeEnabled) {
+        this.quizModeEnabled = quizModeEnabled;
+    }
+
+    public boolean isClassEnabledOrDefault() {
+        return classEnabled == null || classEnabled;
+    }
+
+    public boolean isQuizModeEnabledOrDefault() {
+        return quizModeEnabled == null || quizModeEnabled;
     }
 }

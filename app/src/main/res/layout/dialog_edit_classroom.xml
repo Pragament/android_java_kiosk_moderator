@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingHorizontal="20dp"
+    android:paddingTop="10dp">
+
+    <com.google.android.material.textfield.TextInputLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <com.google.android.material.textfield.TextInputEditText
+            android:id="@+id/et_edit_class_name"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Classroom Name"
+            android:inputType="textPersonName" />
+
+    </com.google.android.material.textfield.TextInputLayout>
+
+    <com.google.android.material.switchmaterial.SwitchMaterial
+        android:id="@+id/switch_class_enabled"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="18dp"
+        android:text="Class enabled" />
+
+    <com.google.android.material.switchmaterial.SwitchMaterial
+        android:id="@+id/switch_quiz_mode_enabled"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Quiz mode enabled" />
+
+</LinearLayout>
