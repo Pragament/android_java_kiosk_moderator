@@ -15,10 +15,13 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.graphics.Insets;
+import androidx.core.view.GravityCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.teacherapp.auth.LoginActivity;
 import com.example.teacherapp.classdetail.ClassDetailActivity;
 import com.example.teacherapp.data.FirestoreRepo;
 import com.example.teacherapp.databinding.ActivityMainBinding;
@@ -26,11 +29,16 @@ import com.example.teacherapp.model.ClassSection;
 import com.example.teacherapp.model.Classroom;
 import com.example.teacherapp.model.Student;
 import com.example.teacherapp.ui.ClassAdapter;
+import com.example.teacherapp.ui.ClassSectionAdapter;
+import com.example.teacherapp.ui.StudentAdapter;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+import com.google.android.material.navigation.NavigationView;
+import com.google.android.material.textview.MaterialTextView;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentReference;
 
 import java.io.BufferedReader;
@@ -51,9 +59,12 @@ public class MainActivity extends AppCompatActivity {
     private PrefManager prefManager;
     private List<Classroom> classroomList;
     private List<ClassSection> classSectionList;
-    private ClassAdapter adapter;
+    private ClassAdapter classroomPreviewAdapter;
+    private ClassSectionAdapter classSectionPreviewAdapter;
     private ClassSection pendingImportSection;
     private ActivityResultLauncher<String[]> csvPickerLauncher;
+    private boolean classroomsLoaded;
+    private boolean classSectionsLoaded;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,17 +79,14 @@ public class MainActivity extends AppCompatActivity {
         classSectionList = new ArrayList<>();
         csvPickerLauncher = registerForActivityResult(new ActivityResultContracts.OpenDocument(), this::handleCsvPicked);
 
-        loadClassrooms();
-        loadClassSections();
         binding.fabCreateClass.setOnClickListener(v -> showCreateClassDialog());
+        binding.btnMoreSections.setOnClickListener(v -> showClassSectionsDialog());
+        binding.btnMoreClassrooms.setOnClickListener(v -> showClassroomsDialog());
+        setupDashboardAdapters();
+        setupDrawer();
 
         MaterialToolbar toolbarMain = findViewById(R.id.toolbar_main);
-        toolbarMain.setNavigationOnClickListener(v -> {
-            if (FirebaseAuth.getInstance().getCurrentUser() != null) {
-                Toast.makeText(MainActivity.this, FirebaseAuth.getInstance()
-                        .getCurrentUser().getDisplayName(), Toast.LENGTH_SHORT).show();
-            }
-        });
+        toolbarMain.setNavigationOnClickListener(v -> binding.drawerLayout.openDrawer(GravityCompat.START));
         toolbarMain.setOnMenuItemClickListener(menuItem -> {
             if (menuItem.getItemId() == R.id.btn_menu_main_sections) {
                 showClassSectionsDialog();
@@ -86,6 +94,10 @@ public class MainActivity extends AppCompatActivity {
             }
             return false;
         });
+
+        showLoading();
+        loadClassrooms();
+        loadClassSections();
     }
 
     private void applyStatusBarInsets() {
@@ -103,12 +115,12 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadClassrooms() {
-        showLoading();
         firetoreRepo.fetchClassrooms(
                 prefManager.getUserId(),
                 querySnapshot -> handleClassroomsLoaded(querySnapshot.toObjects(Classroom.class)),
                 e -> {
-                    showNoClassroom("Error loading classrooms!");
+                    classroomsLoaded = true;
+                    renderDashboard();
                     Log.e("Classrooms", "Error fetching classrooms", e);
                 }
         );
@@ -121,31 +133,109 @@ public class MainActivity extends AppCompatActivity {
             classSectionList.sort((left, right) -> Long.compare(
                     right.getCreatedAt() == null ? 0 : right.getCreatedAt(),
                     left.getCreatedAt() == null ? 0 : left.getCreatedAt()));
-        }, e -> Toast.makeText(this, "Could not load class-sections", Toast.LENGTH_SHORT).show());
+            classSectionsLoaded = true;
+            renderDashboard();
+        }, e -> {
+            classSectionsLoaded = true;
+            renderDashboard();
+            Toast.makeText(this, "Could not load class-sections", Toast.LENGTH_SHORT).show();
+        });
     }
 
     private void handleClassroomsLoaded(List<Classroom> classrooms) {
         classroomList.clear();
         classroomList.addAll(classrooms);
-
-        if (classroomList.isEmpty()) {
-            showNoClassroom("No classes found. Create one by clicking '+'");
-        } else {
-            showMainView();
-            setupRecyclerView();
-        }
+        classroomList.sort((left, right) -> Long.compare(right.getCreatedDate(), left.getCreatedDate()));
+        classroomsLoaded = true;
+        renderDashboard();
     }
 
-    private void setupRecyclerView() {
-        adapter = new ClassAdapter(classroomList, classroom -> {
-            Intent detailActivity = new Intent(MainActivity.this, ClassDetailActivity.class)
+    private void setupDashboardAdapters() {
+        classSectionPreviewAdapter = new ClassSectionAdapter(new ArrayList<>(), this::showStudentsDialog);
+        binding.rvClassSectionsPreview.setLayoutManager(new LinearLayoutManager(this));
+        binding.rvClassSectionsPreview.setNestedScrollingEnabled(false);
+        binding.rvClassSectionsPreview.setAdapter(classSectionPreviewAdapter);
+
+        classroomPreviewAdapter = new ClassAdapter(new ArrayList<>(), this::openClassroom);
+        binding.rvClassroomsPreview.setLayoutManager(new LinearLayoutManager(this));
+        binding.rvClassroomsPreview.setNestedScrollingEnabled(false);
+        binding.rvClassroomsPreview.setAdapter(classroomPreviewAdapter);
+    }
+
+    private void renderDashboard() {
+        if (!classroomsLoaded || !classSectionsLoaded) {
+            return;
+        }
+
+        classSectionPreviewAdapter.setItems(firstItems(classSectionList, 3));
+        classroomPreviewAdapter.setItems(firstItems(classroomList, 3));
+
+        binding.rvClassSectionsPreview.setVisibility(classSectionList.isEmpty() ? View.GONE : View.VISIBLE);
+        binding.tvSectionEmpty.setVisibility(classSectionList.isEmpty() ? View.VISIBLE : View.GONE);
+        binding.btnMoreSections.setVisibility(classSectionList.size() > 3 ? View.VISIBLE : View.GONE);
+
+        binding.rvClassroomsPreview.setVisibility(classroomList.isEmpty() ? View.GONE : View.VISIBLE);
+        binding.tvClassroomEmpty.setVisibility(classroomList.isEmpty() ? View.VISIBLE : View.GONE);
+        binding.btnMoreClassrooms.setVisibility(classroomList.size() > 3 ? View.VISIBLE : View.GONE);
+
+        showMainView();
+    }
+
+    private <T> List<T> firstItems(List<T> values, int limit) {
+        int end = Math.min(values.size(), limit);
+        return new ArrayList<>(values.subList(0, end));
+    }
+
+    private void openClassroom(Classroom classroom) {
+        Intent detailActivity = new Intent(MainActivity.this, ClassDetailActivity.class)
                     .putExtra("class_name", classroom.getClassName())
                     .putExtra("class_code", classroom.getClassCode());
-            startActivity(detailActivity);
-        });
+        startActivity(detailActivity);
+    }
 
-        binding.rvClassroom.setLayoutManager(new LinearLayoutManager(this));
-        binding.rvClassroom.setAdapter(adapter);
+    private void setupDrawer() {
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        NavigationView navigationView = binding.navViewMain;
+        View header = navigationView.getHeaderView(0);
+        MaterialTextView tvName = header.findViewById(R.id.tv_nav_user_name);
+        MaterialTextView tvEmail = header.findViewById(R.id.tv_nav_user_email);
+
+        if (user != null) {
+            String name = user.getDisplayName();
+            tvName.setText(name == null || name.trim().isEmpty() ? "Teacher" : name);
+            String email = user.getEmail();
+            tvEmail.setText(email == null || email.trim().isEmpty() ? user.getUid() : email);
+        }
+
+        navigationView.setNavigationItemSelectedListener(item -> {
+            int id = item.getItemId();
+            binding.drawerLayout.closeDrawer(GravityCompat.START);
+            if (id == R.id.nav_class_sections) {
+                showClassSectionsDialog();
+            } else if (id == R.id.nav_create_classroom) {
+                showCreateClassDialog();
+            } else if (id == R.id.nav_logout) {
+                confirmLogout();
+            }
+            return true;
+        });
+    }
+
+    private void confirmLogout() {
+        new MaterialAlertDialogBuilder(this)
+                .setTitle("Logout?")
+                .setMessage("You will return to the login screen.")
+                .setPositiveButton("Logout", (dialog, which) -> logout())
+                .setNegativeButton("Cancel", null)
+                .show();
+    }
+
+    private void logout() {
+        FirebaseAuth.getInstance().signOut();
+        prefManager.clearLogin();
+        Intent intent = new Intent(this, LoginActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
     }
 
     private void showClassSectionsDialog() {
@@ -190,6 +280,56 @@ public class MainActivity extends AppCompatActivity {
         return labels;
     }
 
+    private void showClassroomsDialog() {
+        if (classroomList.isEmpty()) {
+            new MaterialAlertDialogBuilder(this)
+                    .setTitle("Classrooms")
+                    .setMessage("No classrooms yet.")
+                    .setPositiveButton("Create", (dialog, which) -> showCreateClassDialog())
+                    .setNegativeButton("Close", null)
+                    .show();
+            return;
+        }
+
+        String[] labels = new String[classroomList.size()];
+        for (int i = 0; i < classroomList.size(); i++) {
+            Classroom classroom = classroomList.get(i);
+            labels[i] = classroom.getClassName() + "\nCode: " + classroom.getClassCode();
+        }
+
+        new MaterialAlertDialogBuilder(this)
+                .setTitle("Classrooms")
+                .setItems(labels, (dialog, which) -> openClassroom(classroomList.get(which)))
+                .setPositiveButton("Close", null)
+                .show();
+    }
+
+    private void showStudentsDialog(ClassSection section) {
+        RecyclerView recyclerView = new RecyclerView(this);
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        recyclerView.setPadding(0, 8, 0, 8);
+
+        AlertDialog dialog = new MaterialAlertDialogBuilder(this)
+                .setTitle(section.getSectionName())
+                .setMessage("Loading students...")
+                .setView(recyclerView)
+                .setPositiveButton("Import CSV", null)
+                .setNegativeButton("Close", null)
+                .show();
+
+        dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(view -> {
+            pendingImportSection = section;
+            csvPickerLauncher.launch(new String[]{"text/*", "text/comma-separated-values", "application/csv"});
+            dialog.dismiss();
+        });
+
+        firetoreRepo.fetchStudents(section.getSectionId(), querySnapshot -> {
+            List<Student> students = querySnapshot.toObjects(Student.class);
+            dialog.setMessage(students.isEmpty() ? "No students imported yet." : null);
+            recyclerView.setAdapter(new StudentAdapter(students));
+        }, e -> dialog.setMessage("Could not load students."));
+    }
+
     private void showCreateClassSectionDialog() {
         TextInputEditText input = new TextInputEditText(this);
         input.setHint("Class-Section Name");
@@ -225,6 +365,7 @@ public class MainActivity extends AppCompatActivity {
             classSectionList.add(0, section);
             Toast.makeText(this, "Class-section created", Toast.LENGTH_SHORT).show();
             dialog.dismiss();
+            renderDashboard();
         }, e -> Toast.makeText(this, "Could not create class-section", Toast.LENGTH_SHORT).show());
     }
 
@@ -463,19 +604,19 @@ public class MainActivity extends AppCompatActivity {
 
     private void showLoading() {
         binding.pbLoadingClass.setVisibility(View.VISIBLE);
-        binding.rvClassroom.setVisibility(View.GONE);
+        binding.dashboardContent.setVisibility(View.GONE);
         binding.tvNoClassroom.setVisibility(View.GONE);
     }
 
     private void showMainView() {
         binding.pbLoadingClass.setVisibility(View.GONE);
-        binding.rvClassroom.setVisibility(View.VISIBLE);
+        binding.dashboardContent.setVisibility(View.VISIBLE);
         binding.tvNoClassroom.setVisibility(View.GONE);
     }
 
     private void showNoClassroom(String message) {
         binding.pbLoadingClass.setVisibility(View.GONE);
-        binding.rvClassroom.setVisibility(View.GONE);
+        binding.dashboardContent.setVisibility(View.GONE);
         binding.tvNoClassroom.setText(message);
         binding.tvNoClassroom.setVisibility(View.VISIBLE);
     }

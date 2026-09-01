@@ -90,6 +90,18 @@ public class FirestoreRepo {
                 .addOnFailureListener(onFailure);
     }
 
+    public void fetchStudents(String sectionId,
+                              OnSuccessListener<QuerySnapshot> onSuccess,
+                              OnFailureListener onFailure) {
+        firestore.collection(CLASS_SECTION_COLLECTION)
+                .document(sectionId)
+                .collection(STUDENT_COLLECTION)
+                .orderBy("name", Query.Direction.ASCENDING)
+                .get()
+                .addOnSuccessListener(onSuccess)
+                .addOnFailureListener(onFailure);
+    }
+
     public void fetchSpecificClass(String classCode, OnSuccessListener<QuerySnapshot> onSuccess, OnFailureListener onFailure) {
         firestore.collection(CLASSROOM_COLLECTION)
                 .whereEqualTo("classCode", classCode)

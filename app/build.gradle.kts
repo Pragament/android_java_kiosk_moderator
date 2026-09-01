@@ -54,5 +54,6 @@ dependencies {
     implementation("androidx.credentials:credentials-play-services-auth:1.2.2")
     implementation("com.google.android.gms:play-services-auth:21.4.0")
     implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.1.0")
+    implementation("androidx.drawerlayout:drawerlayout:1.2.0")
 
 }

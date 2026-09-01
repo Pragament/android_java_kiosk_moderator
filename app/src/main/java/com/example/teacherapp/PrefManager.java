@@ -26,4 +26,10 @@ public class PrefManager {
     public boolean isLogin() {
         return preferences.getBoolean("isLogin", false);
     }
+
+    public void clearLogin() {
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.clear();
+        editor.apply();
+    }
 }

@@ -27,6 +27,12 @@ public class ClassAdapter extends RecyclerView.Adapter<ClassAdapter.ViewHolder> 
         this.listener = listener;
     }
 
+    public void setItems(List<Classroom> classrooms) {
+        classroomList.clear();
+        classroomList.addAll(classrooms);
+        notifyDataSetChanged();
+    }
+
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
