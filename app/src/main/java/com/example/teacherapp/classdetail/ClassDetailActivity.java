@@ -94,16 +94,6 @@ public class ClassDetailActivity extends AppCompatActivity {
                 loadClassData();
             } else if (id == R.id.btn_menu_detail_whitelist) {
                 showWhitelistedAppsDialog();
-            } else if (id == R.id.btn_menu_detail_web_usage) {
-                Intent webUsageIntent = new Intent(this, WebUsageActivity.class)
-                        .putExtra("class_code", classCode)
-                        .putExtra("class_name", toolbar.getTitle());
-                startActivity(webUsageIntent);
-            } else if (id == R.id.btn_menu_detail_submissions) {
-                Intent submissionsIntent = new Intent(this, QuizSubmissionsActivity.class)
-                        .putExtra("class_code", classCode)
-                        .putExtra("class_name", toolbar.getTitle());
-                startActivity(submissionsIntent);
             } else if (id == R.id.btn_menu_detail_date_filter) {
                 showDateFilterDialog();
             } else if (id == R.id.btn_menu_detail_filter) {
@@ -119,6 +109,7 @@ public class ClassDetailActivity extends AppCompatActivity {
             }
             return true;
         });
+        setupBottomNavigation(toolbar);
 
         binding.swipeRefreshUsageLog.setOnRefreshListener(this::loadClassData);
         setupRecyclerView();
@@ -129,6 +120,31 @@ public class ClassDetailActivity extends AppCompatActivity {
                 classroom = querySnapshot.toObjects(Classroom.class).get(0);
             }
         }, e -> classroom = null);
+    }
+
+    private void setupBottomNavigation(MaterialToolbar toolbar) {
+        binding.bottomNavClassroom.setSelectedItemId(R.id.bottom_nav_apps);
+        binding.bottomNavClassroom.setOnItemSelectedListener(item -> {
+            int id = item.getItemId();
+            if (id == R.id.bottom_nav_apps) {
+                return true;
+            }
+            if (id == R.id.bottom_nav_websites) {
+                Intent webUsageIntent = new Intent(this, WebUsageActivity.class)
+                        .putExtra("class_code", classCode)
+                        .putExtra("class_name", toolbar.getTitle());
+                startActivity(webUsageIntent);
+                return true;
+            }
+            if (id == R.id.bottom_nav_quiz) {
+                Intent submissionsIntent = new Intent(this, QuizSubmissionsActivity.class)
+                        .putExtra("class_code", classCode)
+                        .putExtra("class_name", toolbar.getTitle());
+                startActivity(submissionsIntent);
+                return true;
+            }
+            return false;
+        });
     }
 
     private void applyStatusBarInsets() {

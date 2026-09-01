@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/bottom_nav_apps"
+        android:icon="@drawable/ic_apps"
+        android:title="Apps" />
+    <item
+        android:id="@+id/bottom_nav_websites"
+        android:icon="@drawable/ic_public"
+        android:title="Websites" />
+    <item
+        android:id="@+id/bottom_nav_quiz"
+        android:icon="@drawable/ic_quiz"
+        android:title="Quiz" />
+</menu>

@@ -1,5 +1,6 @@
 package com.example.teacherapp.submissions;
 
+import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
 import android.text.Html;
@@ -12,12 +13,14 @@ import androidx.core.view.WindowInsetsCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 
 import com.example.teacherapp.R;
+import com.example.teacherapp.classdetail.ClassDetailActivity;
 import com.example.teacherapp.data.FirestoreRepo;
 import com.example.teacherapp.databinding.ActivityQuizSubmissionsBinding;
 import com.example.teacherapp.databinding.DialogQuizSubmissionBinding;
 import com.example.teacherapp.model.QuizAnswer;
 import com.example.teacherapp.model.QuizSubmission;
 import com.example.teacherapp.ui.QuizSubmissionAdapter;
+import com.example.teacherapp.webusage.WebUsageActivity;
 import com.google.android.material.appbar.MaterialToolbar;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
@@ -88,10 +91,38 @@ public class QuizSubmissionsActivity extends AppCompatActivity {
             }
             return true;
         });
+        setupBottomNavigation();
 
         binding.swipeRefreshQuizSubmissions.setOnRefreshListener(this::loadSubmissions);
         setupRecyclerView();
         loadSubmissions();
+    }
+
+    private void setupBottomNavigation() {
+        binding.bottomNavClassroom.setSelectedItemId(R.id.bottom_nav_quiz);
+        binding.bottomNavClassroom.setOnItemSelectedListener(item -> {
+            int id = item.getItemId();
+            if (id == R.id.bottom_nav_quiz) {
+                return true;
+            }
+            if (id == R.id.bottom_nav_apps) {
+                Intent appsIntent = new Intent(this, ClassDetailActivity.class)
+                        .putExtra("class_code", classCode)
+                        .putExtra("class_name", getIntent().getStringExtra("class_name"))
+                        .setFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                startActivity(appsIntent);
+                return true;
+            }
+            if (id == R.id.bottom_nav_websites) {
+                Intent webIntent = new Intent(this, WebUsageActivity.class)
+                        .putExtra("class_code", classCode)
+                        .putExtra("class_name", getIntent().getStringExtra("class_name"));
+                startActivity(webIntent);
+                finish();
+                return true;
+            }
+            return false;
+        });
     }
 
     private void applyStatusBarInsets() {
